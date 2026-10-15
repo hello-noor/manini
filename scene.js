@@ -601,7 +601,7 @@ function buildConnect(ox) {
     }
     const lg = new THREE.ExtrudeGeometry(shp, { depth: .16, bevelEnabled: true, bevelThickness: .02, bevelSize: .02, bevelSegments: 1 });
     lg.center(); lg.scale(.0092, .0092, 1); lg.rotateY(-Math.PI / 2);
-    const mark = new THREE.Mesh(lg, new THREE.MeshStandardMaterial({ color: 0xf1eee7, roughness: .75, bumpMap: bump, bumpScale: .3 }));
+    const mark = new THREE.Mesh(lg, new THREE.MeshStandardMaterial({ color: 0x0a63b8, roughness: .55, metalness: .1, emissive: 0x0a4f9a, emissiveIntensity: .35 }));
     mark.position.set(13 - 5 - .08, 2.6, 4); m.add(mark, .85, V3(30, 0, 0));
   }
   const cv = document.createElement('canvas'); cv.width = 640; cv.height = 360; const cg = cv.getContext('2d');
@@ -1078,6 +1078,9 @@ function seUI() {
   else if (S.t < 0) { st.textContent = `Premi “Scuoti”. ${magText(M)}: ${magWord(M)}.`; st.className = 'status'; }
 }
 /* ---------- UI: connect ---------- */
+const CNV = { all: [10.5, 6.5, 2, 50, -26, 12], room: [13, 3, 4, 18, -70, 10] };
+function cnView(k) { const v = CNV[k], b = beats[4]; b.c.copy(mConn.origin).add(V3(v[0], v[1], v[2])); b.d = v[3]; b.az = v[4]; b.el = v[5]; b.labelsOff = k === 'room'; document.querySelectorAll('#cnView button').forEach(x => x.classList.toggle('on', x.dataset.v === k)); }
+$('#cnView').addEventListener('click', e => { const b = e.target.closest('button'); if (b) cnView(b.dataset.v); });
 const cnEv = $('#cnEv');
 cnEv.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
