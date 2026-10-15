@@ -210,7 +210,7 @@ function buildOndal(ox, o = {}) {
           for (let q = 0; q <= 18; q++) { const a = -a0 + 2 * a0 * q / 18, zz = R * Math.sin(a) + gp / 2, yy = R * Math.cos(a) - (R - SAG); pts.push([zz, yy]); pts2.push([R * .0 + (R - .09) * Math.sin(a) + gp / 2, (R - .09) * Math.cos(a) - (R - SAG)]); }
           const cs = new THREE.Shape(); pts.forEach((p, k) => k ? cs.lineTo(p[0], p[1]) : cs.moveTo(p[0], p[1])); pts2.reverse().forEach(p => cs.lineTo(p[0], p[1])); cs.closePath();
           const c2 = extrudeX(cs, L, M.cap); c2.position.set(xm, ty, zA); m.add(c2, dl + .04, V3(0, 16, 0), m.g, null, 'curve'); m.dyn.span.push(c2); m.cappelle.push(c2);
-          for (let q = 0; q < 3; q++) { const lx = box(L * .2, .05, gp * .42, M.glass, xm + (q - 1) * L * .3, ty + SAG + .02, zA + gp / 2); m.add(lx, dl + .1, V3(0, 16, 0), m.g, null, 'curve'); }
+          for (let q = 0; q < 3; q++) { const lx = box(L * .2, .05, gp * .42, M.glass, xm + (q - 1) * L * .3, ty + SAG + .02, zA + gp / 2); m.add(lx, dl + .1, V3(0, 16, 0), m.g, null, 'curve'); (m.skyH = m.skyH || []).push({ x0: xm + (q - 1) * L * .3 - L * .1, x1: xm + (q - 1) * L * .3 + L * .1, z0: zA + gp / 2 - gp * .21, z1: zA + gp / 2 + gp * .21, y: ty + SAG + .02 }); }
         }
         if (o.pv && 0) { /* riservato */ }
       } else {
@@ -782,8 +782,8 @@ snTs.forEach(t => t.addEventListener('input', () => { sun.play = false; sun.h = 
 snPs.forEach(b => b.addEventListener('click', () => { sun.play = !sun.play; snPs.forEach(x => x.textContent = sun.play ? '⏸' : '▶'); }));
 function sunUI(sv) {
   const curved = mOndal.hidden.has('shed');
-  const direct = !curved && sv.deg > 14 ? clamp(sv.v.z / .5, 0, 1) : 0, pct = Math.round(direct * 100);
-  const txt = curved ? 'Cappella curva: la luce arriva dai lucernari a raso e dall’alto.' : direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dalle vetrate dello shed (${pct}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa dallo shed.`;
+  const direct = sv.deg > 14 ? (curved ? clamp(sv.v.y / .7, 0, 1) : clamp(sv.v.z / .5, 0, 1)) : 0, pct = Math.round(direct * 100);
+  const txt = curved ? (direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dai lucernari a raso della cappella curva (${pct}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa.`) : direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dalle vetrate dello shed (${pct}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa dallo shed.`;
   for (const k of ['', '2']) { $('#snO' + k).textContent = fmtH(sun.h); $('#snM' + k).style.width = pct + '%'; $('#snS' + k).textContent = txt; }
 }
 // visible sun + arc
@@ -804,6 +804,25 @@ const makeShafts = m => m.glassStrips.map(g => {
   mesh.frustumCulled = false; mesh.visible = false; m.g.add(mesh); return { g, mesh };
 });
 const shaftsA = makeShafts(mOndal), shaftsB = makeShafts(mOndalP);
+// raggi dai lucernari a raso della cappella curva: volumi dal rettangolo vetrato fino al pavimento
+const shaftsC = (mOndal.skyH || []).map(r => {
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(24), 3));
+  const col = new Float32Array(24); for (let i = 0; i < 8; i++) { const a = i < 4 ? .55 : .08; col[i * 3] = a; col[i * 3 + 1] = a * .85; col[i * 3 + 2] = a * .5; }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex([0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7]);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  mesh.frustumCulled = false; mesh.visible = false; mOndal.g.add(mesh); return { r, mesh };
+});
+function shaftsCUpdate(sv, w) {
+  const on = w > .3 && sv.deg > 14;
+  shaftsC.forEach(({ r, mesh }) => {
+    mesh.visible = on; if (!on) return;
+    const v = sv.v, t = r.y / v.y, dx = -v.x * t, dz = -v.z * t, P = mesh.geometry.attributes.position.array;
+    const c = [[r.x0, r.z0], [r.x1, r.z0], [r.x1, r.z1], [r.x0, r.z1]];
+    c.forEach(([x, z], i) => { P.set([x, r.y, z], i * 3); P.set([x + dx, 0, z + dz], (i + 4) * 3); });
+    mesh.geometry.attributes.position.needsUpdate = true; mesh.material.opacity = .22 * w;
+  });
+}
 function shaftsUpdate(list, sv, w, x1) {
   const on = w > .3 && sv.deg > 14 && sv.v.z > .12;
   list.forEach(({ g, mesh }) => {
@@ -1093,7 +1112,8 @@ function tick(now) {
   key.target.position.copy(camTgt);
   sunSprite.position.copy(sm0.origin).addScaledVector(sv.v, 100); sunSprite.material.opacity = sw; sunSprite.visible = sw > .02;
   sunArc.position.copy(sm0.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
-  shaftsUpdate(shaftsA, sv, mOndal.hidden.has('shed') ? 0 : sw1); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3);
+  const curvedNow = mOndal.hidden.has('shed');
+  shaftsUpdate(shaftsA, sv, curvedNow ? 0 : sw1); shaftsCUpdate(sv, curvedNow ? sw1 : 0); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3);
   if (sw > .02) sunUI(sv);
   rim.position.set(camTgt.x + 30, camTgt.y + 20, camTgt.z - 34); rim.target.position.copy(camTgt);
   const ab = Math.round(fS); if (ab !== activeBeat) { activeBeat = ab; closeTags(); }
