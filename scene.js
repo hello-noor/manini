@@ -464,15 +464,19 @@ function buildSeismic(ox) {
     for (const dz of [-.22, .22]) addBolt(br, dx0(sx), -.06, dz, [Math.PI, 0, 0]);
   }
   function dx0(sx) { return sx * .0; }
-  const swing = new THREE.Group(); swing.position.set(DX - .1, 0, ZP); structG.add(swing);   // asta+cerniera: ruota per recuperare i difetti di montaggio
+  const swing = new THREE.Group(); swing.position.set(DX - .1, 0, ZP); structG.add(swing);   
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 2.5, 20), STEEL); rod.rotation.z = Math.PI / 2; rod.position.set(.1, YB - .5, 0); rod.castShadow = true; swing.add(rod);
-  const brg = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .34, 24), STEEL); brg.rotation.z = Math.PI / 2; brg.position.set(.1, YB - .5, 0); brg.castShadow = true; swing.add(brg);
-  const redB = box(.34, .5, .5, RED, .15, YB - .78, 0); redB.castShadow = true; swing.add(redB);        // cerniera rossa
-  for (const dz of [-.12, .12]) { const rb = box(.44, .12, .06, RED, .1, YB - .55, dz * 2.1); swing.add(rb); }
-  addBolt(swing, .3, YB - .84, .26, [Math.PI / 2, 0, 0]); addBolt(swing, -.02, YB - .64, -.26, [-Math.PI / 2, 0, 0]);
-  const pinS = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .5, 14), STEEL); pinS.position.set(0, YB - 1.1, 0); pinS.castShadow = true; swing.add(pinS);   // perno che scorre nell'asola
   // carrello sul bordo del pannello: piastra a osso con asole e bulloni
   const plateG = new THREE.Group(); m.g.add(plateG);
+  // cuscinetto a occhiello rosso: fisso sul bordo del pannello; l'asta d'acciaio scorre al suo interno
+  const PYW = H + .87, ryw = PYW + YB - .5;
+  const brg = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .34, 24), STEEL); brg.rotation.z = Math.PI / 2; brg.position.set(0, ryw, ZP); plateG.add(brg);
+  const eye = new THREE.Mesh(new THREE.TorusGeometry(.24, .07, 12, 28), RED); eye.position.set(0, ryw, ZP); eye.rotation.y = Math.PI / 2; plateG.add(eye);   // occhiello rosso attorno all'asta
+  plateG.add(box(.34, .5, .5, RED, 0, ryw - .3, ZP));
+  for (const dz of [-.26, .26]) plateG.add(box(.44, .12, .06, RED, 0, ryw + .02, ZP + dz));
+  addBolt(plateG, .22, ryw - .36, ZP + .26, [Math.PI / 2, 0, 0]); addBolt(plateG, -.2, ryw - .2, ZP - .26, [-Math.PI / 2, 0, 0]);
+  const pinS = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .5, 14), STEEL); pinS.position.set(0, ryw - .75, ZP); plateG.add(pinS);
+
   const slotM = new THREE.MeshStandardMaterial({ color: 0x151b24, roughness: .9 });
   const pl1 = box(3.0, .06, .5, STEEL, 0, PH + .03, ZP); plateG.add(pl1);
   const pl2 = box(2.7, .06, .3, STEEL, 0, PH + .09, ZP); plateG.add(pl2);
@@ -538,7 +542,6 @@ function buildSeismic(ox) {
       o.bar.scale.y = Math.max(.1, L - .5); o.c1.position.y = L / 2 - .3; o.c2.position.y = -L / 2 + .3;
       o.tb.position.set(tx, ty - .04, o.zz); o.tb.rotation.z = pivot.rotation.z; o.bb.position.set(bx - o.sx * .05, by + .02, o.zz);
     });
-    swing.rotation.y = S.all ? clamp(uL * .1, -.22, .22) : 0;
     // pannello: ancorato in basso al terreno; in testa segue la struttura (rigido) o scorre (AllDrift)
     panelG.position.set(-X + xg, 0, ZP); panelG.rotation.x = S.pfall;
     const k = S.all ? 0 : uL / H;
