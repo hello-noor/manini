@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manini · Costruito meglio. In fabbrica.</title>
+<meta name="description" content="Ondal, TAU, Manini Plan, Solai: i sistemi prefabbricati Manini in 3D. Luce, sicurezza sismica, monitoraggio, sostenibilità.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050b14;--ink:#f5f5f7;--dim:#9a9aa0;--line:rgba(255,255,255,.12);--card:rgba(22,23,27,.62);--solid:#101114;--accent:#4da3ff;--brand:#00498a;--blue:#4aa3ff;--ok:#34d399;--bad:#ff4d4d}
+  *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--bg)}
+  body{margin:0;color:var(--ink);font:400 17px/1.5 'Inter',-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  #gl{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block}
+  #labels{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+  .tag{position:absolute;left:0;top:0;white-space:nowrap;font:500 11.5px 'JetBrains Mono',monospace;letter-spacing:.04em;padding:6px 10px 6px 22px;border-radius:99px;background:rgba(10,10,12,.72);border:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;transition:opacity .5s;will-change:transform}
+  .tag:before{content:"";position:absolute;left:8px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(77,163,255,.25)}
+  .tag.on{opacity:1}
+  .bar{position:fixed;inset:0 0 auto 0;z-index:30;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(16px,4vw,56px);background:rgba(12,12,14,.6);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line);font-size:13px}
+  .bar b{font-weight:700;letter-spacing:.12em}.bar nav{display:flex;gap:26px;color:var(--dim)}.bar nav a:hover{color:var(--ink)}
+  .bar .go{background:var(--ink);color:#000;padding:6px 14px;border-radius:99px;font-weight:600}
+  @media(max-width:760px){.bar nav a:not(.go){display:none}}
+  main{position:relative;z-index:2}
+  .eyebrow{font:500 12px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:clamp(44px,7vw,104px);line-height:.98;letter-spacing:-.04em;font-weight:800;margin:.18em 0 .28em}
+  h2{font-size:clamp(32px,4.6vw,60px);line-height:1.04;letter-spacing:-.032em;font-weight:700;margin:.2em 0 .45em}
+  p{margin:0 0 1em}.lead{font-size:clamp(18px,1.9vw,24px);line-height:1.34;color:var(--dim);font-weight:400}
+  .btn{display:inline-block;padding:13px 26px;border-radius:99px;font-size:16px;font-weight:600;background:var(--brand);color:#fff;box-shadow:0 0 0 1px rgba(77,163,255,.35),0 10px 30px -8px rgba(0,73,138,.8);border:0;cursor:pointer;font-family:inherit}
+  .btn.ghost{background:transparent;color:var(--accent);padding-left:6px;font-weight:500;box-shadow:none}
+  /* 3D sections: transparent so the canvas shows */
+  .s3d{position:relative}
+  .hero{min-height:100svh;display:flex;align-items:flex-end;padding:120px clamp(20px,6vw,80px) 9vh}
+  .hero .in{max-width:640px;text-shadow:0 2px 40px rgba(0,0,0,.6)}
+  .cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:30px}
+  .scrollhint{position:absolute;right:clamp(20px,6vw,80px);bottom:9vh;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:var(--dim);writing-mode:vertical-rl}
+  .step{min-height:115svh;display:flex;align-items:center;padding:0 clamp(20px,6vw,80px)}
+  .stick{position:sticky;top:0;height:100svh;display:flex;align-items:center;width:100%;padding:0 clamp(20px,6vw,80px)}
+  .tall{min-height:170svh;padding:0}
+  .card{width:min(460px,100%);background:var(--card);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);border:1px solid var(--line);border-radius:26px;padding:clamp(24px,3vw,38px);box-shadow:0 30px 80px -20px rgba(0,0,0,.6)}
+  .card h2{font-size:clamp(28px,3.2vw,42px);margin-top:.25em}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0;padding:0;list-style:none}
+  .chips li{font:500 12px 'JetBrains Mono',monospace;letter-spacing:.03em;padding:7px 12px;border-radius:99px;border:1px solid var(--line);color:var(--ink);background:rgba(255,255,255,.04)}
+  .chips li b{color:var(--accent);font-weight:500}
+  @media(max-width:900px){.step,.stick{align-items:flex-end;padding-bottom:5vh}.card{width:100%}.scrollhint{display:none}.hero{padding-bottom:6vh}}
+  /* controls */
+  .ctl{display:grid;gap:14px;margin-top:20px}
+  .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:rgba(255,255,255,.06);border-radius:12px;padding:3px;gap:3px}
+  .seg button{font:600 13px 'Inter',sans-serif;border:0;background:transparent;color:var(--dim);padding:10px 8px;border-radius:9px;cursor:pointer;transition:.2s}
+  .seg button.on{background:var(--ink);color:#000}
+  .seg.tog button.on{background:var(--brand);color:#fff}
+  .row{display:flex;align-items:center;gap:14px;font:500 12px 'JetBrains Mono',monospace;color:var(--dim)}
+  .row input[type=range]{flex:1;accent-color:var(--accent)}
+  .row output{min-width:58px;text-align:right;color:var(--ink)}
+  .read{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .read div{background:rgba(255,255,255,.05);border-radius:12px;padding:10px 12px}
+  .read span{display:block;font:500 10.5px 'JetBrains Mono',monospace;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+  .read strong{font-size:20px;letter-spacing:-.01em}
+  .meter{height:8px;border-radius:99px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+  .meter i{position:absolute;inset:0 auto 0 0;width:0;background:var(--ok);border-radius:99px;transition:background .2s}
+  .meter i.warn{background:var(--accent)}.meter i.bad{background:var(--bad)}
+  .status{font:500 12px 'JetBrains Mono',monospace;min-height:1.5em;color:var(--dim)}
+  .status.bad{color:var(--bad)}.status.ok{color:var(--ok)}.status.warn{color:var(--accent)}
+  .fine{font-size:12px;color:var(--dim);margin:14px 0 0}
+  /* opaque sections */
+  .solid{background:var(--bg);position:relative;padding:clamp(80px,12vw,160px) clamp(20px,6vw,80px)}
+  .wrap{max-width:1180px;margin:0 auto}
+  .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:26px;overflow:hidden;margin-top:56px}
+  .nums div{background:var(--solid);padding:38px 30px}
+  .nums strong{display:block;font-size:clamp(44px,5.4vw,74px);letter-spacing:-.04em;line-height:1;font-weight:800}
+  .nums span{color:var(--dim);font-size:15px}
+  .bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-top:56px}
+  .bx{grid-column:span 2;background:var(--solid);border:1px solid var(--line);border-radius:26px;padding:30px;min-height:240px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+  .bx.w{grid-column:span 3}.bx.xl{grid-column:span 4}
+  .bx h3{font-size:24px;letter-spacing:-.02em;margin:.5em 0 .3em;line-height:1.15}
+  .bx p{color:var(--dim);font-size:15.5px;margin:0}
+  .bx .big{font-size:clamp(54px,6vw,84px);font-weight:800;letter-spacing:-.045em;line-height:1;background:linear-gradient(180deg,#fff,#7b7d84);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .bx:hover{border-color:rgba(77,163,255,.5)}
+  @media(max-width:900px){.bento{grid-template-columns:1fr}.bx,.bx.w,.bx.xl{grid-column:auto;min-height:0}}
+  .refs{display:flex;flex-wrap:wrap;gap:10px 12px;margin-top:40px}
+  .refs span{font-size:clamp(20px,2.6vw,34px);font-weight:700;letter-spacing:-.025em;padding:10px 22px;border:1px solid var(--line);border-radius:99px;color:#d9d9dd}
+  .final{text-align:center;padding:clamp(110px,16vw,220px) clamp(20px,6vw,80px);background:radial-gradient(ellipse 70% 60% at 50% 100%,rgba(0,73,138,.45),transparent 70%),var(--bg)}
+  .final h2{font-size:clamp(40px,7vw,96px)}
+  footer{background:var(--bg);padding:40px clamp(20px,6vw,80px) 70px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;position:relative;z-index:2}
+  footer p{max-width:70em;margin:.4em 0}
+  .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
+  #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
+  @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas><div id="nogl"></div><div id="labels"></div>
+
+<header class="bar"><b>MANINI</b><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#connect">Connect</a><a href="#verde">Sostenibilità</a><a class="go" href="#contatti">Contatti</a></nav></header>
+
+<main>
+<!-- HERO -->
+<section class="s3d hero" data-beat="0">
+  <div class="in">
+    <div class="eyebrow">Manini Prefabbricati · dal 1962</div>
+    <h1>Costruito meglio.<br>In fabbrica.</h1>
+    <p class="lead">Coperture, pilastri e travi che arrivano finiti, precisi, pronti da montare. Guarda come si costruisce un capannone, un pezzo alla volta.</p>
+    <div class="cta"><a class="btn" href="#sistemi">Scopri i sistemi</a><a class="btn ghost" href="#contatti">Parla con un tecnico ›</a></div>
+  </div>
+  <div class="scrollhint">SCORRI</div>
+</section>
+
+<!-- SISTEMI -->
+<section id="sistemi">
+  <div class="s3d step" data-beat="1"><div class="card rv">
+    <div class="eyebrow">01 · Ondal</div><h2>La copertura che porta la luce dentro.</h2>
+    <p class="lead" style="font-size:17px">Una copertura in cemento armato progettata, prodotta e impermeabilizzata in fabbrica. Piana o a shed, anche insieme sullo stesso tetto. I vetri dello shed fanno entrare luce naturale.</p>
+    <ul class="chips"><li><b>5,00–7,50 m</b> interasse tegoli</li><li><b>R60–R180</b> resistenza al fuoco</li><li>Acqua su <b>2 direzioni</b></li></ul>
+  </div></div>
+  <div class="s3d step" data-beat="2"><div class="card rv">
+    <div class="eyebrow">02 · Ondal+</div><h2>Più luce. Meno fondazioni.</h2>
+    <p class="lead" style="font-size:17px">Ondal+ porta il sistema a luci e maglie di pilastri più grandi: più spazio utile in pianta e meno plinti da costruire.</p>
+    <ul class="chips"><li>Luce fino a <b>32 m</b></li><li>Maglia <b>25 × 25 m</b> e oltre</li><li>Ancoraggi sismici dedicati</li></ul>
+  </div></div>
+  <div class="s3d step" data-beat="3"><div class="card rv">
+    <div class="eyebrow">03 · TAU</div><h2>Piana e inclinata. Insieme.</h2>
+    <p class="lead" style="font-size:17px">Estradosso parabolico, intradosso rettilineo: l'acqua scivola via e il controsoffitto resta piano. Pronta per il fotovoltaico, senza forare l'impermeabilizzazione.</p>
+    <ul class="chips"><li>Luci <b>12–32 m</b></li><li>Estradosso <b>80–120 cm</b></li><li>Lucernari a raso o shed</li></ul>
+  </div></div>
+  <div class="s3d step" data-beat="4"><div class="card rv">
+    <div class="eyebrow">04 · Manini Plan</div><h2>Pilastri e travi precompresse.</h2>
+    <p class="lead" style="font-size:17px">La struttura portante: pilastri, travi principali in cemento armato precompresso e travi secondarie a T, anch'esse precompresse. Un manto continuo isola e impermeabilizza.</p>
+    <ul class="chips"><li>Industria</li><li>Esposizione</li><li>Commercio</li><li>Isolamento <b>su misura</b></li></ul>
+  </div></div>
+  <div class="s3d step" data-beat="5"><div class="card rv">
+    <div class="eyebrow">05 · Solai</div><h2>Un solaio per ogni piano.</h2>
+    <p class="lead" style="font-size:17px">Dal Poker alveolare al PI-Greco, fino a Pluriman e Solman per grandi luci e carichi importanti. Intradosso piano, grandi aperture, resistenza al fuoco.</p>
+    <ul class="chips"><li>Poker <b>20–50 cm</b></li><li>PI-Greco <b>40–80 cm</b></li><li>Larghezza <b>250 cm</b></li><li>Fino a <b>R120</b></li></ul>
+  </div></div>
+</section>
+
+<!-- NUMERI -->
+<section class="solid" id="perche">
+  <div class="wrap">
+    <div class="eyebrow rv">Perché Manini</div>
+    <h2 class="rv">Il riferimento italiano<br>della prefabbricazione industriale.</h2>
+    <p class="lead rv" style="max-width:34em">Primo per fatturato e valore di mercato nel settore, secondo gli studi CERVED (2016) e PLIMSOL (2017) citati dall'azienda.</p>
+    <div class="nums rv">
+      <div><strong data-n="64">0</strong><span>anni di storia, da Assisi, 1962</span></div>
+      <div><strong data-n="500">0</strong><span>persone</span></div>
+      <div><strong data-n="4">0</strong><span>stabilimenti: Lombardia, Lazio, Umbria</span></div>
+      <div><strong data-n="10" data-s=" M">0</strong><span>di m² di edifici realizzati</span></div>
+      <div><strong data-n="230" data-s=".000">0</strong><span>m³ l'anno di capacità produttiva</span></div>
+      <div><strong data-n="120" data-s=" M€">0</strong><span>di fatturato</span></div>
+    </div>
+    <div class="bento">
+      <div class="bx xl rv"><div class="eyebrow">Tutto in fabbrica</div><div><h3>Progettata, prodotta e impermeabilizzata prima di arrivare in cantiere.</h3><p>Meno lavorazioni in quota, meno imprevisti, tempi certi. È l'idea alla base di Ondal.</p></div></div>
+      <div class="bx rv"><div class="big">24/48h</div><div><h3>Intervento in tutta Italia</h3><p>Manini Service risponde in uno o due giorni.</p></div></div>
+      <div class="bx rv"><div class="big">R180</div><div><h3>Fino a R180 al fuoco</h3><p>Da R60 a R180 su richiesta per le coperture Ondal.</p></div></div>
+      <div class="bx rv"><div class="big">−70%</div><div><h3>Acqua di deflusso</h3><p>Il tetto verde può ridurre fino al 70% le acque piovane.</p></div></div>
+      <div class="bx w rv"><div class="eyebrow">Antisismica</div><div><h3>AllDrift®, certificata UNI EN 15129.</h3><p>L'unica connessione scorrevole progettata per le strutture prefabbricate, secondo Manini. Provala qui sotto.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SISMICA -->
+<section id="sicurezza" class="s3d tall" data-beat="6">
+  <div class="stick"><div class="card" id="seis">
+    <div class="eyebrow">Sicurezza sismica</div><h2>Quando la terra trema, la trave scorre.</h2>
+    <p class="lead" style="font-size:16px">Due file di pilastri si muovono in modo diverso. Con un collegamento rigido la trave si spezza. Con AllDrift® scorre su blocchi in PTFE e snodi a cerniera.</p>
+    <div class="ctl">
+      <div class="seg" id="seMode"><button class="on" data-m="rigid">Collegamento rigido</button><button data-m="alldrift">AllDrift®</button></div>
+      <label class="row">Intensità<input id="seI" type="range" min="1" max="10" step="1" value="5"><output id="seIo">≈ 0,25 g</output></label>
+      <button class="btn" id="seGo">Scuoti</button>
+      <div class="read"><div><span>Spostamento relativo</span><strong id="seD">0,000 m</strong></div><div><span>Capacità</span><strong id="seC">0,10 m</strong></div></div>
+      <div class="meter"><i id="seM"></i></div>
+      <div class="status" id="seS">Premi “Scuoti”.</div>
+    </div>
+    <p class="fine">Dimostrazione didattica, non un calcolo strutturale: capacità illustrative e spostamenti amplificati ×5.</p>
+  </div></div>
+</section>
+
+<!-- CONNECT -->
+<section id="connect" class="s3d tall" data-beat="7">
+  <div class="stick"><div class="card" id="conn">
+    <div class="eyebrow">Manini Connect</div><h2>Il pilastro che ti avvisa.</h2>
+    <p class="lead" style="font-size:16px">Sensori integrati nei pilastri già in produzione. I dati arrivano via cloud alla Control Room Manini, e gli algoritmi segnalano subito ogni anomalia.</p>
+    <div class="ctl">
+      <div class="seg" id="cnEv"><button data-e="rain">Bomba d'acqua</button><button data-e="quake">Sisma</button><button data-e="wind">Vento forte</button></div>
+      <div class="status" id="cnS">Struttura nei parametri di progetto.</div>
+    </div>
+    <ul class="chips"><li><b>Brevettato</b></li><li>Premio IoT <b>Digital360 2018</b></li><li>Anche su edifici esistenti</li></ul>
+  </div></div>
+</section>
+
+<!-- VERDE -->
+<section id="verde" class="s3d tall" data-beat="8">
+  <div class="stick"><div class="card">
+    <div class="eyebrow">Sostenibilità</div><h2>Il tetto che lavora per te.</h2>
+    <p class="lead" style="font-size:16px">Fotovoltaico fissato senza forare l'impermeabilizzazione. Tetti verdi che trattengono l'acqua e raffrescano. Un sito carbon free, compensato. Manini è socia del Green Building Council Italia.</p>
+    <div class="ctl"><div class="seg tog" id="gnT"><button class="on" data-t="pv">Fotovoltaico</button><button class="on" data-t="green">Tetto verde</button></div></div>
+    <ul class="chips"><li>Ondal <b>Powershed®</b></li><li>Carbon <b>free</b></li><li>GBC <b>Italia</b></li></ul>
+  </div></div>
+</section>
+
+<!-- REFERENZE -->
+<section class="solid">
+  <div class="wrap">
+    <div class="eyebrow rv">Referenze</div>
+    <h2 class="rv">Costruito per chi non può sbagliare.</h2>
+    <div class="refs rv">
+      <span>Dolce&amp;Gabbana</span><span>Lidl</span><span>Scavolini</span><span>Poltrona Frau</span><span>Liu Jo</span><span>L'Erbolario</span><span>Coop Centro Italia</span><span>Nuova Simonelli</span><span>Gruppo Mastrotto</span><span>Pagani</span><span>Palaterni</span>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="contatti">
+  <div class="eyebrow rv">Il prossimo edificio</div>
+  <h2 class="rv">Prefabbrichiamo<br>il futuro. Insieme.</h2>
+  <p class="lead rv" style="max-width:30em;margin:0 auto 30px">Racconta ai tecnici Manini cosa vuoi costruire, o riqualificare.</p>
+  <a class="btn rv" href="https://www.manini.it/contatti/" target="_blank" rel="noopener">Contatta Manini</a>
+</section>
+</main>
+
+<footer>
+  <p><b>Concept non ufficiale.</b> Progetto dimostrativo ispirato a manini.it, non realizzato né approvato da Manini Prefabbricati S.p.A. Nomi dei sistemi, numeri aziendali e referenze sono tratti dal sito pubblico; i modelli 3D sono ricostruzioni stilizzate, non disegni tecnici.</p>
+  <p>I numeri sono quelli pubblicati sul sito: alcune pagine riportano valori diversi (ad esempio anni di storia, fatturato e persone). Le capacità produttive sono la somma dei quattro stabilimenti indicati su "Chi siamo".</p>
+</footer>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module" src="./scene.js"></script>
+<script>
+// non-3D behaviours: reveal + count up
+const io=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}}),{threshold:.12});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+const co=new IntersectionObserver(e=>e.forEach(x=>{if(!x.isIntersecting)return;co.unobserve(x.target);const el=x.target,n=+el.dataset.n,s=el.dataset.s||'',t0=performance.now();
+  (function f(t){const k=Math.min(1,(t-t0)/1400),v=Math.round(n*(1-Math.pow(1-k,3)));el.textContent=v+s;if(k<1)requestAnimationFrame(f)})(t0)}),{threshold:.6});
+document.querySelectorAll('[data-n]').forEach(el=>co.observe(el));
+</script>
+</body>
+</html>
