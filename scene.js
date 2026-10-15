@@ -913,6 +913,7 @@ function shaftsCUpdate(sv, w, list = shaftsC) {
   });
 }
 const tauSky = makeSky(mTau);
+const shaftsN = makeShafts(mOndalN);
 let heroSh = makeShafts(mHero), heroSky = makeSky(mHero); mHero.keepStruct = true;
 function shaftsUpdate(list, sv, w, x1) {
   const on = w > .3 && sv.deg > 14 && sv.v.z > .12;
@@ -1211,7 +1212,7 @@ function tick(now) {
   if (!REDUCED && gate && intro < 1) { intro += dt * .35; }
   // lights follow (the sun slider drives the key light on the Ondal step)
   if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snTs.forEach(t => t.value = sun.h); }
-  const sw1 = sysSel === 'ondal' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw0 = clamp(1 - fS * 1.6, 0, 1), sw2 = sysSel === 'ondalp' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, swT = sysSel === 'tau' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw = Math.max(sw0, sw1, sw2, swT), sv = sunVec(sun.h), sm0 = swT >= sw && swT > 0 ? mTau : sw0 >= sw1 && sw0 >= sw2 ? mHero : sw2 > sw1 ? mOndalP : mOndal;
+  const sw1 = sysSel === 'ondal' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw0 = clamp(1 - fS * 1.6, 0, 1), sw2 = sysSel === 'ondalp' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, swT = sysSel === 'tau' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, swN = sysSel === 'ondaln' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw = Math.max(sw0, sw1, sw2, swT, swN), sv = sunVec(sun.h), sm0 = swN >= sw && swN > 0 ? mOndalN : swT >= sw && swT > 0 ? mTau : sw0 >= sw1 && sw0 >= sw2 ? mHero : sw2 > sw1 ? mOndalP : mOndal;
   key.position.set(camTgt.x - 26, camTgt.y + 44, camTgt.z + 30).lerp(tmp.copy(camTgt).addScaledVector(sv.v, 60), sw);
   key.intensity = lerp(2.3, .9 + 2.6 * Math.sin(sv.deg * Math.PI / 180), sw);
   key.color.setHex(0xfff0dd).lerp(new THREE.Color(0xffc48a), sw * (1 - clamp((sv.deg - 10) / 30, 0, 1)));
@@ -1220,6 +1221,7 @@ function tick(now) {
   sunArc.position.copy(sm0.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
   const curvedNow = mOndal.hidden.has('shed');
   shaftsUpdate(shaftsA, sv, curvedNow ? 0 : sw1); shaftsCUpdate(sv, curvedNow ? sw1 : 0); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3); shaftsCUpdate(sv, mTau.hidden.has('tausky') || mTau.flat ? 0 : swT, tauSky);
+  shaftsUpdate(shaftsN, sv, sysSel === 'ondaln' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0);
   shaftsUpdate(heroSh, sv, mHero.t > .7 ? sw0 : 0); shaftsCUpdate(sv, mHero.t > .7 ? sw0 : 0, heroSky);
   if (sw > .02 && sw0 < .5) sunUI(sv);
   if (gate && fS < .7) {

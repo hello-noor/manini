@@ -67,6 +67,19 @@
     cform.querySelectorAll('.opt input').forEach(i => i.addEventListener('change', () => setTimeout(() => { if (cur === 1) show(2); }, 280)));
     $('#usechips').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cform.elements.use.value = b.textContent; cform.elements.use.dispatchEvent(new Event('input')); });
     cform.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); cur < 3 ? next.click() : send.click(); } });
+    const fileIn = $('#f-file'), attB = $('#attB'), attX = $('#attX'), attT = $('#attT'), att = $('#att'), MAXB = 5 * 1024 * 1024;
+    const attDefault = attT.innerHTML;
+    const setFile = f => {
+      if (f && (f.size > MAXB || !/\.(pdf|jpe?g|png)$/i.test(f.name))) { err.textContent = f.size > MAXB ? 'Il file supera i 5 MB.' : 'Formato non valido: usa PDF, JPG o PNG.'; fileIn.value = ''; f = null; }
+      att.classList.toggle('has', !!f); attX.hidden = !f;
+      attT.innerHTML = f ? `${f.name.replace(/[<>&]/g, '')} <small>${(f.size / 1048576).toFixed(1).replace('.', ',')} MB · pronto per l’invio</small>` : attDefault;
+    };
+    attB.addEventListener('click', () => fileIn.click());
+    attX.addEventListener('click', () => { fileIn.value = ''; setFile(null); });
+    fileIn.addEventListener('change', () => setFile(fileIn.files[0] || null));
+    ['dragenter', 'dragover'].forEach(t => att.addEventListener(t, ev => { ev.preventDefault(); att.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach(t => att.addEventListener(t, ev => { ev.preventDefault(); att.classList.remove('drag'); }));
+    att.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) { const dt = new DataTransfer(); dt.items.add(f); fileIn.files = dt.files; setFile(f); } });
     const payload = () => {
       const d = {
         'Tipo di intervento': checked('intervention'), 'Area mq': checked('build-mq'), 'Destinazione d\'uso': val('use'), 'Città, provincia della realizzazione': val('town'),
@@ -81,7 +94,10 @@
       const p = payload(); if (p._honey) return;
       send.classList.add('sending'); send.textContent = 'Invio in corso…'; err.textContent = '';
       try {
-        const r = await fetch(FORM_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(p) });
+        const file = fileIn.files[0];
+        let r;
+        if (file) { const fd = new FormData(); Object.entries(p).forEach(([k, v]) => fd.append(k, v)); fd.append('attachment', file, file.name); r = await fetch(FORM_ENDPOINT, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd }); }
+        else r = await fetch(FORM_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(p) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok || (j.success !== true && j.success !== 'true')) throw new Error(j.message || 'errore ' + r.status);
         cform.hidden = true; const ok = $('#cfOk'); ok.hidden = false; ok.focus({ preventScroll: true });
@@ -90,7 +106,7 @@
         err.innerHTML = 'Non sono riuscito a inviare la richiesta. <a href="' + mailto(p) + '" style="color:var(--accent);text-decoration:underline">Invia con la tua email</a> oppure scrivi a ' + FORM_TO + '.';
       } finally { send.classList.remove('sending'); send.textContent = 'Invia la richiesta'; }
     });
-    $('#cfAgain').addEventListener('click', () => { cform.reset(); cform.hidden = false; $('#cfOk').hidden = true; show(1); });
+    $('#cfAgain').addEventListener('click', () => { cform.reset(); setFile(null); cform.hidden = false; $('#cfOk').hidden = true; show(1); });
     // precompilazione da altre sezioni (Manini Service, configuratore)
     document.addEventListener('click', e => {
       const t = e.target.closest('[data-prefill]'); if (!t) return;

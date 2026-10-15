@@ -429,6 +429,10 @@
   .chk input:checked+span{background:var(--brand);border-color:#4da3ff}.chk input:checked+span:after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
   .chk input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}.chk.bad span{border-color:#ff6a6a}
   .chk em{font-style:normal;font-size:12.5px;line-height:1.45;color:#aeb8c6}.chk em a{color:var(--accent);text-decoration:underline}
+  .att{display:flex;gap:8px;align-items:stretch;margin:2px 0 14px}.attb{flex:1;display:flex;align-items:center;gap:12px;text-align:left;font:600 14px Inter,sans-serif;color:var(--ink);background:rgba(255,255,255,.04);border:1.5px dashed rgba(77,163,255,.5);border-radius:14px;padding:12px 14px;cursor:pointer;transition:.2s}
+  .attb:hover,.att.drag .attb{background:rgba(77,163,255,.1);border-color:var(--accent)}.attb svg{flex:none;width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .attb small{display:block;font:400 11.5px Inter,sans-serif;color:var(--dim);margin-top:2px}.att.has .attb{border-style:solid;background:rgba(0,73,138,.3)}
+  .attx{flex:none;width:44px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#fff;font-size:20px;cursor:pointer}.attx[hidden]{display:none}
   .cf-err{min-height:1.3em;color:#ff8d8d;font-size:14px;margin:6px 0 4px}
   .cf-nav{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:8px}.cf-nav .btn{cursor:pointer}.cf-nav .btn[hidden]{display:none}
   #cfSend.sending{opacity:.7;pointer-events:none}
@@ -843,13 +847,14 @@
           <div class="two"><div class="fld"><input id="f-mail" name="email" type="email" placeholder=" " autocomplete="email" maxlength="200"><label for="f-mail">Email</label></div><div class="fld"><input id="f-tel" name="tel" type="tel" placeholder=" " autocomplete="tel" maxlength="60"><label for="f-tel">Telefono</label></div></div>
           <div class="fld"><input id="f-area" name="your-area" type="text" placeholder=" " autocomplete="off" maxlength="200"><label for="f-area">Settore produttivo</label></div>
           <div class="fld"><textarea id="f-msg" name="your-message" rows="3" placeholder=" " maxlength="2000"></textarea><label for="f-msg">Note aggiuntive (facoltative)</label></div>
+          <div class="att" id="att"><input type="file" id="f-file" name="attachment" accept=".pdf,.jpg,.jpeg,.png" hidden><button type="button" class="attb" id="attB"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5.5 5.5 0 01-7.8-7.8l9-9a3.7 3.7 0 015.2 5.2l-9 9a1.8 1.8 0 01-2.6-2.6l8.2-8.2"/></svg><span id="attT">Allega disegni o documenti <small>PDF, JPG, PNG · fino a 5 MB</small></span></button><button type="button" class="attx" id="attX" hidden aria-label="Rimuovi allegato">×</button></div>
           <label class="chk"><input type="checkbox" name="privacy" value="1"><span></span><em>Acconsento al trattamento dei miei dati per finalità informative e di marketing, anche con trasferimento a terze parti, come da <a href="https://www.iubenda.com/privacy-policy/53914366" target="_blank" rel="noopener">informativa privacy di Manini</a>. Posso chiedere la cancellazione in ogni momento.</em></label>
           <label class="chk"><input type="checkbox" name="callback" value="1"><span></span><em>Desidero essere contattato da un commerciale per ulteriori informazioni.</em></label>
           <input type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0">
         </div>
         <div class="cf-err" id="cfErr" role="alert" aria-live="assertive"></div>
         <div class="cf-nav"><button type="button" class="btn ghost" id="cfBack" hidden>‹ Indietro</button><button type="button" class="btn" id="cfNext">Avanti</button><button type="submit" class="btn" id="cfSend" hidden>Invia la richiesta</button></div>
-        <p class="cf-fine">Preferisci chiamare? <a href="tel:+390758041018">+39 075 80 41 018</a>. Allegati? Scrivi a <a href="mailto:com@manini.it">com@manini.it</a>: puoi inviare disegni e documenti in risposta.</p>
+        <p class="cf-fine">Preferisci chiamare? <a href="tel:+390758041018">+39 075 80 41 018</a>. Dati trattati come da informativa privacy di Manini.</p>
       </form>
       <div class="cf-ok" id="cfOk" hidden tabindex="-1"><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34"/><path d="M24 41l11 11 21-24"/></svg><h3>Richiesta inviata.</h3><p>Grazie. I tecnici Manini leggeranno la tua richiesta e ti ricontatteranno.</p><button type="button" class="btn ghost" id="cfAgain">Invia un’altra richiesta</button></div>
     </div>
