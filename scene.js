@@ -396,11 +396,11 @@ function buildSolai(ox) {
   const m = new Model(ox); m.stage(24);
   m.g.userData.center = V3(0, 1.5, 0);
   m.still(box(22, .3, 17, M.concreteD, 0, -.15, 0));
-  const len = 10, y0 = 1.1, up = V3(0, 18, 0), Z = { pk: -7.4, pi: -3.1, so: -.2, pl: 2.9 };
+  const len = 10, y0 = 1.1, up = V3(0, 18, 0), Z = { pk: -7, pi: -3.1, so: -.2, pl: 2.9 };
   for (const x of [-len / 2 + 1, len / 2 - 1]) m.add(box(.9, y0, 17, M.concrete, x, y0 / 2, 0), 0, V3(0, 16, 0));
   const shade = o => { o.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); return o; };
-  // Poker: tre lastre affiancate larghe 1,20 m
-  const pk = [0, 1, 2].map(k => { const e = extrudeX(pokerShape(.32), len, M.concrete); e.position.set(0, y0, Z.pk + k * 1.2); m.add(e, .2 + k * .05, up); return e; });
+  // Poker: due lastre affiancate larghe 1,20 m (2,40 m in tutto, per confronto con gli elementi da 2,50 m)
+  const pk = [0, 1].map(k => { const e = extrudeX(pokerShape(.32), len, M.concrete); e.position.set(0, y0, Z.pk + k * 1.2); m.add(e, .2 + k * .05, up); return e; });
   const pi = extrudeX(piShape(.6), len, M.concrete); pi.position.set(0, y0, Z.pi); m.add(pi, .45, up);
   const mkBox = (zc, ribs, wBox, wFl) => { const g = new THREE.Group(); g.position.set(0, y0, zc); m.add(g, .6, up); const lam = []; g.userData = { ribs, wBox, wFl }; return g; };
   const so = mkBox(Z.so, [.65, 1.85], .62, .84), pl = mkBox(Z.pl, [.38, 1.25, 2.12], .42, .76);
@@ -823,14 +823,14 @@ const SO = [
   { z: 4.2, t: '<b>Pluriman.</b> Per carichi molto impegnativi, largo 250 cm, con altezze di 60, 75 e 90 cm. L’intradosso piano, con meno giunti, in alcune situazioni arriva a una resistenza al fuoco superiore a R180. È una delle ultime innovazioni della prefabbricazione.' },
 ];
 const SOC = [
-  { min: 1, max: 10, step: 1, val: 4, th: v => .2 + (v - 1) * .3 / 9, txt: v => '≈ ' + Math.round((.2 + (v - 1) * .3 / 9) * 100) + ' cm', fn: 'setPoker', lab: 'Poker' },
-  { min: 40, max: 80, step: 5, val: 60, th: v => v / 100, txt: v => v + ' cm', fn: 'setPi', lab: 'PI-Greco' },
-  { min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setSolman', lab: 'Solman' },
-  { min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setPluriman', lab: 'Pluriman' },
+  { w: 120, min: 1, max: 10, step: 1, val: 4, th: v => .2 + (v - 1) * .3 / 9, txt: v => '≈ ' + Math.round((.2 + (v - 1) * .3 / 9) * 100) + ' cm', fn: 'setPoker', lab: 'Poker' },
+  { w: 250, min: 40, max: 80, step: 5, val: 60, th: v => v / 100, txt: v => v + ' cm', fn: 'setPi', lab: 'PI-Greco' },
+  { w: 250, min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setSolman', lab: 'Solman' },
+  { w: 250, min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setPluriman', lab: 'Pluriman' },
 ];
 const soT = $('#soT'); let soCur = 0;
-const soLab = (i, th) => { const c = SOC[i], lb = beats[6].labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)}`; lb.p.y = 1.1 + th + .35; };
-function soApply() { const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v); mSolai[c.fn](th); $('#soTo').textContent = c.txt(v); soLab(soCur, th); }
+const soLab = (i, th) => { const c = SOC[i], lb = beats[6].labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)} · largo ${c.w}`; lb.p.y = 1.1 + th + .35; };
+function soApply() { const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v); mSolai[c.fn](th); $('#soTo').textContent = c.txt(v); $('#soW').textContent = c.w + ' cm'; $('#soM').textContent = soCur === 0 ? '2 lastre affiancate' : '1 elemento intero'; soLab(soCur, th); }
 function soSet(i) {
   soCur = i; const c = SOC[i];
   soT.min = c.min; soT.max = c.max; soT.step = c.step; soT.value = c.val;
