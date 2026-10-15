@@ -692,6 +692,12 @@ const cfgOpts = () => {
 };
 const mOndal = buildOndal(0, { rows: [0, 20, 40], nz: 3, colH: 9, R: 44, cap: 'both' });
 const mOndalP = buildOndal(0, { rows: [0, 32], nz: 2, colH: 10.5, walls: false, R: 38 });
+const HERO = [
+  ['Ondal shed', { cap: 'shed' }], ['Ondal cappella curva', { cap: 'curve' }], ['Ondal Powershed', { cap: 'shed', pv: true }],
+  ['TAU', { roof: 'tau' }], ['Manini Plan', { roof: 'plan' }], ['Tetto verde e fotovoltaico', { flat: true, roofKinds: ['pv', 'green'] }],
+];
+const heroOpts = i => ({ rows: [0, 20, 40], nz: 3, colH: 9, R: 44, ...HERO[i][1] });
+let mHero = buildOndal(STEP * 5, heroOpts(0)), heroI = 0, heroT = 0;
 const mOndalN = buildOndal(0, { rows: [0, 26], nz: 3, colH: 8.5, omega: true, walls: false, R: 40, cap: 'shed' });
 const mTau = buildTau(0);
 const mPlan = buildPlan(0);
@@ -700,7 +706,7 @@ let mCfg = buildOndal(STEP * 1, cfgOpts());
 const mSeis = buildSeismic(STEP * 2);
 const mConn = buildConnect(STEP * 3);
 const mGreen = buildOndal(STEP * 4, { rows: [0, 18, 36], nz: 4, colH: 8, walls: false, flat: true, roofKinds: ['pv', 'green'], R: 40 });
-const models = [mOndal, mOndalP, mOndalN, mTau, mPlan, mSolai, mCfg, mSeis, mConn, mGreen];
+const models = [mHero, mOndal, mOndalP, mOndalN, mTau, mPlan, mSolai, mCfg, mSeis, mConn, mGreen];
 
 /* ---------- label texts (click to expand) ---------- */
 const INFO = {
@@ -763,7 +769,7 @@ const SYS = {
 const SYSM = { ondal: mOndal, ondalp: mOndalP, ondaln: mOndalN, tau: mTau, plan: mPlan, solai: mSolai };
 let sysSel = 'ondal';
 const beats = [
-  B(mOndal, V3(14, 4.5, 11), 108, -36, 21),
+  B(mHero, V3(14, 4.5, 11), 108, -36, 21),
   SYS.ondal,
   B(mCfg, V3(20, 5, 11), 80, -36, 22),
   B(mSeis, V3(0, 4.5, 0), 44, -14, 10, [[[5.0, 3.9, 2.8], 'Jawfix®'], [[-3, 3.6, 2.9], 'AllDrift®']]),
@@ -1163,13 +1169,14 @@ function tick(now) {
   camera.position.copy(camPos); camera.lookAt(camTgt);
   const sysModels = Object.values(SYSM);
   models.forEach(m => { if (!sysModels.includes(m)) m.target = m.beat !== undefined && Math.abs(fS - m.beat) < 1.15 ? 1 : 0; });
-  mOndal.target = gate && (fS < .5 || (sysSel === 'ondal' && fS < 2.2)) ? 1 : 0;
+  mOndal.target = gate && sysSel === 'ondal' && fS >= .5 && fS < 2.2 ? 1 : 0;
+  mHero.target = gate && fS < 1.15 ? 1 : 0;
   Object.entries(SYSM).forEach(([k, m]) => { if (m !== mOndal) m.target = sysSel === k && fS >= .5 && fS < 2.2 ? 1 : 0; });
   models.forEach(m => { m.g.visible = m.t > .004 || m.target > 0; });
   if (!REDUCED && gate && intro < 1) { intro += dt * .35; }
   // lights follow (the sun slider drives the key light on the Ondal step)
   if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snTs.forEach(t => t.value = sun.h); }
-  const sw1 = sysSel === 'ondal' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw2 = sysSel === 'ondalp' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw = Math.max(sw1, sw2), sv = sunVec(sun.h), sm0 = sw2 > sw1 ? mOndalP : mOndal;
+  const sw1 = sysSel === 'ondal' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw0 = clamp(1 - fS * 1.6, 0, 1), sw2 = sysSel === 'ondalp' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw = Math.max(sw0, sw1, sw2), sv = sunVec(sun.h), sm0 = sw0 >= sw1 && sw0 >= sw2 ? mHero : sw2 > sw1 ? mOndalP : mOndal;
   key.position.set(camTgt.x - 26, camTgt.y + 44, camTgt.z + 30).lerp(tmp.copy(camTgt).addScaledVector(sv.v, 60), sw);
   key.intensity = lerp(2.3, .9 + 2.6 * Math.sin(sv.deg * Math.PI / 180), sw);
   key.color.setHex(0xfff0dd).lerp(new THREE.Color(0xffc48a), sw * (1 - clamp((sv.deg - 10) / 30, 0, 1)));
@@ -1178,7 +1185,17 @@ function tick(now) {
   sunArc.position.copy(sm0.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
   const curvedNow = mOndal.hidden.has('shed');
   shaftsUpdate(shaftsA, sv, curvedNow ? 0 : sw1); shaftsCUpdate(sv, curvedNow ? sw1 : 0); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3);
-  if (sw > .02) sunUI(sv);
+  if (sw > .02 && sw0 < .5) sunUI(sv);
+  if (gate && fS < .7) {
+    heroT += dt;
+    if (heroT > 5.6) {
+      heroT = 0; heroI = (heroI + 1) % HERO.length;
+      const old = mHero; scene.remove(old.g); old.g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+      const nm = buildOndal(STEP * 5, heroOpts(heroI)); nm.t = 0; nm.beat = 0; nm.target = 1;
+      models[models.indexOf(old)] = nm; beats[0].m = nm; mHero = nm;
+      const tg = document.getElementById('heroTag'); if (tg) { tg.classList.remove('in'); void tg.offsetWidth; tg.firstElementChild.textContent = HERO[heroI][0]; tg.classList.add('in'); }
+    }
+  }
   rim.position.set(camTgt.x + 30, camTgt.y + 20, camTgt.z - 34); rim.target.position.copy(camTgt);
   const ab = Math.round(fS); if (ab !== activeBeat) { activeBeat = ab; closeTags(); }
   const run = inView() || Math.abs(fS - Math.round(fS)) > .02;

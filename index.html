@@ -477,6 +477,9 @@
   #profview .pc{position:absolute;left:10px;top:8px;right:10px;font:500 10.5px 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#cfe3ff;text-shadow:0 1px 4px #000}
   #profview .pd{position:absolute;left:10px;right:10px;bottom:8px;display:flex;justify-content:space-between;font:600 12px Inter,sans-serif;color:#fff;text-shadow:0 1px 4px #000}
   #profview .pd i{font-style:normal;color:var(--accent)}
+  .heroTag{position:absolute;right:clamp(20px,6vw,80px);top:96px;text-align:right;pointer-events:none}.heroTag b{display:block;font-size:15px;letter-spacing:-.01em;color:#fff;text-shadow:0 2px 12px #000}.heroTag span{font:500 10.5px 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+  .heroTag.in b{animation:tagIn .7s cubic-bezier(.2,.8,.2,1)}@keyframes tagIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @media(max-width:900px){.heroTag{top:70px;left:20px;right:auto;text-align:left}}
   .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
   #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
@@ -517,6 +520,7 @@
     <p class="lead">Pilastri, travi e coperture nascono in fabbrica, dove tutto si misura e nulla si improvvisa. In cantiere arrivano finiti: tempi certi, più luce, più sicurezza. <span class="nb"><strong>10&nbsp;milioni&nbsp;di&nbsp;m²</strong>&nbsp;costruiti&nbsp;dal&nbsp;1962.</span></p>
     <div class="cta"><a class="btn" href="#sistemi">Scopri i sistemi</a><a class="btn ghost" href="#contatti">Richiedi un preventivo ›</a></div>
   </div>
+  <div class="heroTag in" id="heroTag"><b>Ondal shed</b><span>Un capannone, tante coperture</span></div>
   <div class="scrollhint">SCORRI</div>
 </section>
 
