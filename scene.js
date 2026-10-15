@@ -91,7 +91,7 @@ class Model {
   add(mesh, delay = 0, from = V3(0, 16, 0), parent = this.g, exp = null, grp = '') {
     if (!mesh.userData.ns) mesh.castShadow = mesh.material !== M.glass; mesh.receiveShadow = true;
     parent.add(mesh);
-    this.pieces.push({ m: mesh, home: mesh.position.clone(), off: from.clone().add(V3((Math.random() - .5) * 5, 0, (Math.random() - .5) * 5)), delay, exp, grp });
+    this.pieces.push({ i: this.pieces.length, m: mesh, home: mesh.position.clone(), off: from.clone().add(V3((Math.random() - .5) * 5, 0, (Math.random() - .5) * 5)), delay, exp, grp });
     return mesh;
   }
   still(mesh, parent = this.g) { mesh.receiveShadow = true; parent.add(mesh); return mesh; }
@@ -104,7 +104,8 @@ class Model {
     this.t += Math.sign(d) * Math.min(Math.abs(d), dt * this.speed * (d < 0 ? 2.2 : 1));
     this.ex += (this.exT - this.ex) * Math.min(1, dt * 4); this.ex2 += (this.ex2T - this.ex2) * Math.min(1, dt * 4);
     for (const p of this.pieces) {
-      const k = eo(clamp((this.t * 1.5 - p.delay) / .5, 0, 1));
+      const ri = this.roofRange, pi = p.i, isRoof = !ri || (pi >= ri[0] && pi < ri[1]);
+      const k = this.keepStruct && !isRoof ? 1 : eo(clamp((this.t * 1.5 - p.delay) / .5, 0, 1));
       p.m.position.copy(p.home).addScaledVector(p.off, 1 - k);
       if (p.exp) p.m.position.addScaledVector(p.exp, this.ex);
       if (p.exp2) p.m.position.addScaledVector(p.exp2, this.ex2);
@@ -147,6 +148,7 @@ function buildOndal(ox, o = {}) {
   }
   n = 0;
   const y0 = o.omega ? colH + .3 : colH - .75, H = 2.3, L0 = .55, T = .22;
+  const roofStart = m.pieces.length;
   const cap = o.cap || 'shed', WING = 1.6, WRISE = .72, HG = 1.5, SAG = .8; m.cappelle = [];
   const roofs = { pv: [], green: [], tegoli: [] };
   n = 0; const nt = (rows.length - 1) * nz;
@@ -226,6 +228,7 @@ function buildOndal(ox, o = {}) {
       }
     }
   }
+  m.roofRange = [roofStart, m.pieces.length];
   if (walls) {
     const ph = 2.5, nR = Math.max(2, Math.floor((colH - .5) / ph)), nW = Math.max(3, Math.round(W / 5)), pw = W / nW; let k = 0;
     for (let r = 0; r < nR; r++) for (let c = 0; c < nW; c++) m.add(box(pw - .04, ph - .04, .3, M.panel, pw * c + pw / 2, ph * r + ph / 2, -.5), .78 + (k++ / (nR * nW)) * .2, V3(0, 0, -26));
@@ -882,17 +885,19 @@ const makeShafts = m => m.glassStrips.map(g => {
 });
 const shaftsA = makeShafts(mOndal), shaftsB = makeShafts(mOndalP);
 // raggi dai lucernari a raso della cappella curva: volumi dal rettangolo vetrato fino al pavimento
-const shaftsC = (mOndal.skyH || []).map(r => {
+const makeSky = mm => (mm.skyH || []).map(r => {
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(24), 3));
   const col = new Float32Array(24); for (let i = 0; i < 8; i++) { const a = i < 4 ? .55 : .08; col[i * 3] = a; col[i * 3 + 1] = a * .85; col[i * 3 + 2] = a * .5; }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setIndex([0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7]);
   const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
-  mesh.frustumCulled = false; mesh.visible = false; mOndal.g.add(mesh); return { r, mesh };
+  mesh.frustumCulled = false; mesh.visible = false; mm.g.add(mesh); return { r, mesh };
 });
-function shaftsCUpdate(sv, w) {
+const shaftsC = makeSky(mOndal);
+let heroSh = makeShafts(mHero), heroSky = makeSky(mHero); mHero.keepStruct = true;
+function shaftsCUpdate(sv, w, list = shaftsC) {
   const on = w > .3 && sv.deg > 14;
-  shaftsC.forEach(({ r, mesh }) => {
+  list.forEach(({ r, mesh }) => {
     mesh.visible = on; if (!on) return;
     const v = sv.v, t = r.y / v.y, dx = -v.x * t, dz = -v.z * t, P = mesh.geometry.attributes.position.array;
     const c = [[r.x0, r.z0], [r.x1, r.z0], [r.x1, r.z1], [r.x0, r.z1]];
@@ -1205,15 +1210,15 @@ function tick(now) {
   sunSprite.position.copy(sm0.origin).addScaledVector(sv.v, 100); sunSprite.material.opacity = sw; sunSprite.visible = sw > .02;
   sunArc.position.copy(sm0.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
   const curvedNow = mOndal.hidden.has('shed');
-  shaftsUpdate(shaftsA, sv, curvedNow ? 0 : sw1); shaftsCUpdate(sv, curvedNow ? sw1 : 0); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3);
+  shaftsUpdate(shaftsA, sv, curvedNow ? 0 : sw1); shaftsCUpdate(sv, curvedNow ? sw1 : 0); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3); shaftsUpdate(heroSh, sv, mHero.t > .7 ? sw0 : 0); shaftsCUpdate(sv, mHero.t > .7 ? sw0 : 0, heroSky);
   if (sw > .02 && sw0 < .5) sunUI(sv);
   if (gate && fS < .7) {
     heroT += dt;
     if (heroT > 5.6) {
       heroT = 0; heroI = (heroI + 1) % HERO.length;
       const old = mHero; scene.remove(old.g); old.g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-      const nm = buildOndal(STEP * 5, heroOpts(heroI)); nm.t = 0; nm.beat = 0; nm.target = 1;
-      models[models.indexOf(old)] = nm; beats[0].m = nm; mHero = nm;
+      const nm = buildOndal(STEP * 5, heroOpts(heroI)); nm.t = 0; nm.beat = 0; nm.target = 1; nm.keepStruct = true;
+      models[models.indexOf(old)] = nm; beats[0].m = nm; mHero = nm; heroSh = makeShafts(nm); heroSky = makeSky(nm);
       const tg = document.getElementById('heroTag'); if (tg) { tg.classList.remove('in'); void tg.offsetWidth; tg.firstElementChild.textContent = HERO[heroI][0]; tg.classList.add('in'); }
     }
   }
