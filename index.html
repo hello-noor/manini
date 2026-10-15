@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#00498a">
-<meta property="og:site_name" content="Manini Prefabbricati (concept)">
+<meta property="og:site_name" content="Manini Prefabbricati">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="it_IT">
 <meta property="og:title" content="Manini · Il tuo nuovo capannone nasce qui">
@@ -150,11 +150,11 @@
   #splash{position:fixed;inset:0;z-index:100;background:radial-gradient(ellipse 60% 50% at 50% 50%,#0a1c33,#050b14 70%);display:flex;align-items:center;justify-content:center;transition:opacity .7s ease,transform .9s cubic-bezier(.2,.7,.2,1)}
   #splash.out{opacity:0;transform:scale(1.06);pointer-events:none}
   .sp-in{display:flex;flex-direction:column;align-items:center;gap:26px}
-  .sb{opacity:0;transform-box:fill-box;transform-origin:center;animation:bandIn .55s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i)*.13s + .15s)}
-  .sb:nth-child(odd){--dx:-90px}.sb:nth-child(even){--dx:90px}
-  @keyframes bandIn{from{opacity:0;transform:translateX(var(--dx)) scaleX(.6)}to{opacity:1;transform:none}}
+  .sb{opacity:0;transform-box:fill-box;transform-origin:center bottom;animation:land .62s cubic-bezier(.3,.75,.3,1) calc((3 - var(--i))*.24s + .1s) both,flash .7s ease-out calc((3 - var(--i))*.24s + .5s) both}
+  @keyframes land{0%{opacity:0;transform:translateY(-150px)}12%{opacity:1}58%{opacity:1;transform:translateY(0) scaleY(.94)}74%{transform:translateY(-7px) scaleY(1.02)}88%{transform:translateY(1px) scaleY(.99)}100%{opacity:1;transform:none}}
+  @keyframes flash{from{fill:#7fbcff}to{fill:#fff}}
   #splash svg{filter:drop-shadow(0 10px 40px rgba(0,73,138,.9))}
-  .sw{text-align:center;opacity:0;animation:swIn .8s ease forwards;animation-delay:.85s}
+  .sw{text-align:center;opacity:0;animation:swIn .8s ease forwards;animation-delay:1.55s}
   .sw b{display:block;font-weight:800;font-size:26px;letter-spacing:.34em;margin-right:-.34em}
   .sw i{display:block;font:500 10px 'JetBrains Mono',monospace;font-style:normal;letter-spacing:.5em;color:var(--dim);margin-top:8px;margin-right:-.5em}
   @keyframes swIn{from{opacity:0;letter-spacing:.9em}to{opacity:1}}
@@ -369,7 +369,7 @@
     if(window.__splashDone)return; window.__splashDone=true; de.style.overflow=''; document.body.classList.add('ready');
     if(sp){sp.classList.add('out');setTimeout(function(){sp.remove()},900)} document.dispatchEvent(new Event('splashdone'));};
   if(!sp||matchMedia('(prefers-reduced-motion: reduce)').matches){done();return}
-  de.style.overflow='hidden'; sp.addEventListener('click',done); setTimeout(done,2100); setTimeout(done,6000);
+  de.style.overflow='hidden'; sp.addEventListener('click',done); setTimeout(done,2700); setTimeout(done,6000);
 })();
 </script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
