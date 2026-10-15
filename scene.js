@@ -592,6 +592,18 @@ function buildConnect(ox) {
   [[0, 0, 0, 1.6], [1.5, -.2, .2, 1.2], [-1.4, -.3, 0, 1.1], [.4, .5, .3, 1.1]].forEach(([x, y, z, r]) => { const s = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), cm); s.position.set(x, y, z); s.castShadow = false; cloud.add(s); });
   m.g.add(cloud);
   const room = box(10, 5, 6, M.concrete, 13, 2.5, 4); m.add(room, .7, V3(30, 0, 0));
+  // logo Manini in rilievo sul lato verticale (faccia verso -x)
+  {
+    const bands = [[0, 75, 47, 32], [84, 159, 32, 32], [168, 243, 32, 32], [252, 327, 32, 16]], shp = [];
+    for (const [yt, yb, dt, db] of bands) {
+      const x0 = 17, x1 = 383, xl = 140, xr = 260, xm = 200, P = [[x0, yt], [xl, yt], [xm, yt + dt], [xr, yt], [x1, yt], [x1, yb], [xr, yb], [xm, yb + db], [xl, yb], [x0, yb]];
+      const sh = new THREE.Shape(); P.forEach(([x, y], i) => i ? sh.lineTo(x, -y) : sh.moveTo(x, -y)); sh.closePath(); shp.push(sh);
+    }
+    const lg = new THREE.ExtrudeGeometry(shp, { depth: .16, bevelEnabled: true, bevelThickness: .02, bevelSize: .02, bevelSegments: 1 });
+    lg.center(); lg.scale(.0092, .0092, 1); lg.rotateY(-Math.PI / 2);
+    const mark = new THREE.Mesh(lg, new THREE.MeshStandardMaterial({ color: 0xf1eee7, roughness: .75, bumpMap: bump, bumpScale: .3 }));
+    mark.position.set(13 - 5 - .08, 2.6, 4); m.add(mark, .85, V3(30, 0, 0));
+  }
   const cv = document.createElement('canvas'); cv.width = 640; cv.height = 360; const cg = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 4.725), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); screen.position.set(13, 2.6, 7.03); m.g.add(screen);
