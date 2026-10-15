@@ -246,8 +246,9 @@ function buildOndal(ox, o = {}) {
 
 /* ---------- TAU helpers (sezioni dal catalogo) ---------- */
 const TAU_P = [[-.9, 0], [-.72, 0], [-.72, -.16], [-.13, -.4], [.13, -.4], [.72, -.16], [.72, 0], [.9, 0], [.9, -.3], [.13, -.62], [.13, -.8], [.4, -.88], [.4, -1], [-.4, -1], [-.4, -.88], [-.13, -.8], [-.13, -.62], [-.9, -.3]];
+const TAU_BOT = { 10: -.05, 11: -.13, 12: -.25, 13: -.25, 14: -.13, 15: -.05 };   // intradosso rettilineo: quote assolute
 function tauBeamGeo(L, prof, NX = 36) {
-  const n = TAU_P.length, pos = [], v = (x, j) => [x, prof(x) + TAU_P[j][1], TAU_P[j][0]];
+  const n = TAU_P.length, pos = [], v = (x, j) => [x, TAU_BOT[j] !== undefined ? TAU_BOT[j] : prof(x) + TAU_P[j][1], TAU_P[j][0]];
   for (let i = 0; i < NX; i++) { const x0 = -L / 2 + i * L / NX, x1 = x0 + L / NX; for (let j = 0; j < n; j++) { const j2 = (j + 1) % n, a = v(x0, j), b = v(x1, j), c = v(x1, j2), d = v(x0, j2); pos.push(...a, ...b, ...c, ...a, ...c, ...d); } }
   const tri = THREE.ShapeUtils.triangulateShape(TAU_P.map(p => new THREE.Vector2(p[0], p[1])), []);
   for (const x of [-L / 2, L / 2]) tri.forEach(t => t.forEach(k => pos.push(...v(x, k))));
@@ -274,7 +275,8 @@ function buildTau(ox) {
     const tb = new THREE.Mesh(tauBeamGeo(L, prof), beamMat); tb.position.set(0, colH, z); m.add(tb, .25 + (n++ / 4) * .3, V3(0, 20, 0));
   }
   // travi di banchina continue sulle teste dei pilastri
-  for (const sx of [-1, 1]) m.add(box(.9, .5, 16.5, M.concreteD, sx * L / 2, colH - .5, 0), .22, V3(0, 20, 0));
+  { const bp = new THREE.Shape(); [[-.65, -.6], [.65, -.6], [.65, 0], [.45, 0], [.45, -.22], [-.45, -.22], [-.45, 0], [-.65, 0]].forEach(([x, y], i) => i ? bp.lineTo(x, y) : bp.moveTo(x, y)); bp.closePath();
+    for (const sx of [-1, 1]) { const g = new THREE.ExtrudeGeometry(bp, { depth: 16.5, bevelEnabled: false }); g.translate(0, 0, -8.25); const me = new THREE.Mesh(g, M.concreteD); me.position.set(sx * (L / 2 - .35), colH - .03, 0); m.add(me, .22, V3(0, 20, 0)); } }
   // cappella curva fra le travi (segue la parabola); lucernari a raso in vetro
   const archH = zz => { const r = (zz / (GAP / 2)); return Math.abs(r) >= 1 ? 0 : SAG * (1 - r * r); };
   const arch = (xc, w, zc, mat, lift) => {
@@ -285,8 +287,25 @@ function buildTau(ox) {
   for (let i = 0; i < 3; i++) {
     const zc = (zsB[i] + zsB[i + 1]) / 2;
     const c = arch(0, L - 1.2, zc, M.cap, 0); c.material = M.cap.clone(); c.material.side = THREE.DoubleSide; c.material.bumpMap = ribTex.clone(); c.material.bumpMap.repeat.set((L - 1.2) / .22, 1); c.material.bumpMap.needsUpdate = true; c.material.bumpScale = 2.2; m.add(c, .62 + i * .05, V3(0, 20, 0), m.g, null, 'tauroof');
-    if (i !== 0) for (const xk of [-8.5, -4.2, 0, 4.2, 8.5]) { const gm = arch(xk, 1.6, zc, skyM, .04); m.add(gm, .8, V3(0, 20, 0), m.g, null, 'tauroof'); gm.castShadow = false; }
+    if (i !== 0) for (const xk of [-4.2, 0, 4.2, 8.5]) { const gm = arch(xk, 1.6, zc, skyM, .04); m.add(gm, .8, V3(0, 20, 0), m.g, null, 'tausky'); gm.castShadow = false; }
   }
+  // infisso shed (opzionale) sulla cappella centrale e lunotti in ABS alle estremità di ogni cappella
+  { const zc = (zsB[1] + zsB[2]) / 2, xs = -8, ys = colH + prof(xs) + SAG - .02, sl = Math.atan(dprof(xs));
+    const sg = new THREE.Group(); sg.position.set(xs, ys, zc); sg.rotation.z = sl;
+    const body = box(6.4, .8, 1.5, M.cap, 0, .4, 0); sg.add(body);
+    const gl = box(6.2, .62, .05, skyM, 0, .42, .76); sg.add(gl);
+    for (let q = -3; q <= 3; q++) sg.add(box(.05, .66, .07, M.steel, q * .9, .42, .77));
+    const roof = box(6.6, .06, 1.7, M.cap, 0, .83, .1); roof.rotation.x = -.08; sg.add(roof);
+    sg.traverse(o => o.isMesh && (o.castShadow = true)); m.add(sg, .85, V3(0, 20, 0), m.g, null, 'taushed'); }
+  const absM = new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: .35, transparent: true, opacity: .9, side: THREE.DoubleSide });
+  for (let i = 0; i < 3; i++) for (const sx of [-1, 1]) {
+    const zc = (zsB[i] + zsB[i + 1]) / 2, ex = sx * (L / 2 - .6), shp = new THREE.Shape(), NA = 14;
+    shp.moveTo(-GAP / 2, 0); for (let q = 0; q <= NA; q++) { const zz = -GAP / 2 + GAP * q / NA; shp.lineTo(zz, archH(zz)); } shp.closePath();
+    const g = new THREE.ExtrudeGeometry(shp, { depth: .06, bevelEnabled: false }); g.rotateY(Math.PI / 2);
+    const lu = new THREE.Mesh(g, absM); lu.position.set(ex, colH + prof(ex) - .08, zc); m.add(lu, .9, V3(0, 20, 0), m.g, null, 'tauabs');
+  }
+  m.hidden.add('taushed');
+  m.setOpt = (g, on) => { if (on) m.hidden.delete(g); else m.hidden.add(g); };
   // pioggia: cade, tocca la copertura curva, scorre lungo la parabola, scende
   const NP = 320, geo = new THREE.BufferGeometry(), pos = new Float32Array(NP * 6);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -297,7 +316,7 @@ function buildTau(ox) {
   const poolM = new THREE.MeshStandardMaterial({ color: 0x4aa8ff, roughness: .1, metalness: .2, transparent: true, opacity: .75 });
   const pool = new THREE.Mesh(new THREE.BoxGeometry(L - .6, 1, 14.6), poolM); pool.visible = false; m.g.add(pool);
   m.flat = false; m.pool = 0; m.shed = 0; m.shedT = 0;
-  m.setFlat = f => { m.flat = f; if (f) m.hidden.add('tauroof'); else m.hidden.delete('tauroof'); flatDeck.visible = f; };
+  m.setFlat = f => { m.flat = f; for (const g of ['tauroof', 'tausky', 'taushed', 'tauabs']) { if (f) m.hidden.add(g); else if (g !== 'taushed') m.hidden.delete(g); } flatDeck.visible = f; };
   const surf = (x, z) => { if (m.flat) return colH + 1.05; const dz = (((z + 7.5) % 5) + 5) % 5 - 2.5; return colH + prof(clamp(x, -L / 2, L / 2)) + archH(dz) + .02; };
   const resp = d => { d.x = (Math.random() * 2 - 1) * L / 2; d.z = zsB[0] + Math.random() * (zsB[3] - zsB[0]); d.y = colH + prof(d.x) + 3 + Math.random() * 22; d.v = 0; d.s = 0; d.dir = d.x < 0 ? -1 : 1; };
   const drops = Array.from({ length: NP }, () => { const d = {}; resp(d); return d; });
@@ -718,7 +737,8 @@ const INFO = {
   'Estradosso parabolico': 'La parte superiore curva, larga 80–120 cm, favorisce il deflusso dell’acqua e un’impermeabilizzazione ottimale.',
   'Intradosso piano': 'Il lato inferiore è rettilineo: permette controsoffitti piani, finiture interne varie e impianti sopra il controsoffitto.',
   'Lucernario a raso': 'Fasce vetrate integrate nella cappella curva: portano luce naturale dall’alto senza forare il manto. In alternativa si può usare un infisso shed.',
-  'Trave di banchina': 'Trave continua sulla testa dei pilastri: i tegoli e le travi TAU si appoggiano qui, con sezione a U e fissaggi su inserti.',
+  'Lunotti in ABS': 'Chiusure alle estremità della cappella curva, in ABS: lasciano passare un po’ di luce e chiudono il tunnel dal vento e dalla pioggia.',
+  'Trave di banchina': 'Trave continua sulla testa dei pilastri, con una scanalatura a U in cui si innesta l’estremità della trave TAU.',
   'Deflusso dell’acqua': 'Luci da 12 a 32 m. TAU unisce i vantaggi di una copertura piana e di una a doppia pendenza.',
   'Incastro trave a T': 'La trave secondaria a T si appoggia sulla trave principale precompressa. Dettaglio schematico di un collegamento tipico: appoggio, spinotti e sigillatura.',
   'Appoggio in neoprene': 'Un cuscinetto elastomerico distribuisce il carico e lascia piccoli movimenti dovuti a dilatazioni e deformazioni. Dettaglio tipico, non un disegno esecutivo Manini.',
@@ -762,7 +782,7 @@ const SYS = {
   ondal: B(mOndal, V3(24, 8.5, 9), 58, -62, 11, [[[12, 10.3, 15], 'Shed vetrato · luce naturale'], [[30, 9.2, 7.5], 'Tegoli · interasse 5,00–7,50 m'], [[0, 5, 22.5], 'Pilastri prefabbricati']]),
   ondalp: B(mOndalP, V3(16, 6, 7.5), 74, -34, 18, [[[16, 11.6, 0], 'Luce fino a 32 m'], [[32, 5, 15], 'Maglia 25 × 25 m e oltre']]),
   ondaln: B(mOndalN, V3(12, 9.5, 11), 66, -40, 16, [[[0, 11.4, 11], 'Trave Super-Omega'], [[12, 10.4, 7.5], 'Tegoli su appoggi bassi'], [[24, 6, 0], 'Fondazioni più piccole']]),
-  tau: B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua'], [[0, 8.3, 0], 'Lucernario a raso'], [[-12, 6.4, 0], 'Trave di banchina']]),
+  tau: B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua'], [[0, 8.3, 0], 'Lucernario a raso'], [[-12, 6.4, 0], 'Trave di banchina'], [[11.4, 8.4, -5], 'Lunotti in ABS']]),
   plan: B(mPlan, V3(0, 7.5, 0), 48, -42, 22, [[[-9, 4, 6], 'Pilastro'], [[9, 9.6, 0], 'Trave principale precompressa'], [[0, 11.2, -2.4], 'Trave secondaria a T'], [[-5, 11.2, 6], 'Manto isolante continuo']]),
   solai: B(mSolai, V3(5, 1.6, -5.8), 17, 70, 16, [[[5, 1.5, -5.8], 'Poker'], [[5, 1.8, -1.9], 'PI-Greco'], [[5, 1.9, 1.1], 'Solman'], [[5, 1.9, 4.2], 'Pluriman']]),
 };
@@ -941,6 +961,7 @@ mgS.addEventListener('input', mgUpdate); mgUpdate();
 const tuR = $('#tuR');
 tuR.addEventListener('input', () => { const i = +tuR.value; mTau.rainN = Math.round(300 * i / 200) + 10; $('#tuO').textContent = i + ' mm/h'; $('#tuQ').textContent = fmt(i * 480 / 3600, 1) + ' L/s'; });
 tuR.dispatchEvent(new Event('input'));
+$('#tuOpt').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); mTau.setOpt(b.dataset.g, b.classList.contains('on')); });
 $('#tuCmp').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#tuCmp').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); const flat = b.dataset.f === '1'; mTau.setFlat(flat); mTau.pool = 0; $('#tuWhy').innerHTML = flat ? '<b>Tetto piano.</b> Nessuna pendenza: la pioggia si ferma, forma una pozza e carica la copertura. L’acqua ferma cerca ogni minima fessura.' : '<b>TAU.</b> L’estradosso parabolico, largo 80–120 cm, è una pendenza continua: ogni goccia scorre verso le due gronde. Nessun ristagno e impermeabilizzazione ottimale.'; });
 setInterval(() => { const e = $('#tuPool'); if (e) e.textContent = mTau.flat ? Math.round(mTau.pool * 6 * 10) / 10 + ' cm' : '0 cm'; }, 250);
 $('#tuPv').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); const on = b.classList.contains('on'); mTau.pv.target = on ? 1 : 0; $('#tuP').textContent = on ? `${mTau.pv.n} pannelli · ${fmt(mTau.pv.area * .2)} kWp` : '—'; });
