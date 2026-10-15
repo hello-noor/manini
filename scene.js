@@ -154,13 +154,28 @@ function buildOndal(ox, o = {}) {
     const L = rows[i + 1] - rows[i] - (o.omega ? 1.8 : .6), xm = (rows[i] + rows[i + 1]) / 2; if (i === 0) m.dyn.L0 = L;
     if (o.roof === 'tau' || o.roof === 'plan') {
       if (o.roof === 'tau') {
-        const nT = Math.max(2, Math.round(D / 5));
-        const prof = x => .55 + 1.05 * (1 - Math.pow(2 * x / L, 2));
-        const shp = new THREE.Shape(); shp.moveTo(-L / 2, 0); shp.lineTo(L / 2, 0);
-        for (let q = 0; q <= 30; q++) { const x = L / 2 - (q / 30) * L; shp.lineTo(x, prof(x)); } shp.closePath();
+        const nT = Math.max(2, Math.round(D / 5)), sp = D / nT, FW = 1.0, GAPT = sp - FW - .06, SAGT = .5, NX = 36;
+        const prof = x => .75 + 1.1 * (1 - Math.pow(2 * x / L, 2));
+        const stemS = new THREE.Shape(); stemS.moveTo(-L / 2, 0); stemS.lineTo(L / 2, 0);
+        for (let q = 0; q <= NX; q++) { const x = L / 2 - (q / NX) * L; stemS.lineTo(x, prof(x) - .16); } stemS.closePath();
+        const flS = new THREE.Shape(); for (let q = 0; q <= NX; q++) { const x = -L / 2 + q * L / NX; q ? flS.lineTo(x, prof(x)) : flS.moveTo(x, prof(x)); } for (let q = NX; q >= 0; q--) { const x = -L / 2 + q * L / NX; flS.lineTo(x, prof(x) - .16); } flS.closePath();
+        const archH = zz => { const r = zz / (GAPT / 2); return Math.abs(r) >= 1 ? 0 : SAGT * (1 - r * r); };
         for (let q = 0; q <= nT; q++) {
-          const g = new THREE.ExtrudeGeometry(shp, { depth: 1, bevelEnabled: false }); g.translate(0, 0, -.5);
-          const bm = new THREE.Mesh(g, M.concrete); bm.position.set(xm, colH, q * D / nT); m.add(bm, .42 + (q / (nT + 1)) * .4);
+          const z = q * sp, dl2 = .42 + (q / (nT + 1)) * .4;
+          const gS = new THREE.ExtrudeGeometry(stemS, { depth: .26, bevelEnabled: false }); gS.translate(0, 0, -.13);
+          const st = new THREE.Mesh(gS, M.concrete); st.position.set(xm, colH, z); m.add(st, dl2);
+          const gF = new THREE.ExtrudeGeometry(flS, { depth: FW, bevelEnabled: false, curveSegments: 1 }); gF.translate(0, 0, -FW / 2);
+          const fl = new THREE.Mesh(gF, M.concrete); fl.position.set(xm, colH, z); m.add(fl, dl2 + .01);
+          m.add(box(L, .26, .56, M.concrete, xm, colH - .13, z), dl2 + .01);
+          if (q < nT) {
+            const g = new THREE.PlaneGeometry(L - .4, GAPT, 20, 10); g.rotateX(-Math.PI / 2);
+            const P = g.attributes.position; for (let k = 0; k < P.count; k++) { const x = P.getX(k), zz = P.getZ(k); P.setY(k, prof(clamp(x, -L / 2, L / 2)) - .08 + archH(zz)); }
+            g.computeVertexNormals(); const cm = M.cap.clone(); cm.side = THREE.DoubleSide;
+            const arc = new THREE.Mesh(g, cm); arc.position.set(xm, colH, z + sp / 2); m.add(arc, dl2 + .06); m.cappelle.push(arc);
+            const gg = new THREE.PlaneGeometry(4.2, GAPT, 4, 10); gg.rotateX(-Math.PI / 2);
+            const Q = gg.attributes.position; for (let k = 0; k < Q.count; k++) { const x = Q.getX(k), zz = Q.getZ(k); Q.setY(k, prof(clamp(x, -L / 2, L / 2)) - .05 + archH(zz)); }
+            gg.computeVertexNormals(); const gl2 = new THREE.Mesh(gg, M.glass); gl2.position.set(xm, colH, z + sp / 2); gl2.castShadow = false; m.add(gl2, dl2 + .1);
+          }
         }
         m.stat = { name: 'Travi TAU', n: (rows.length - 1) * (nT + 1) };
       } else {
@@ -319,11 +334,16 @@ function buildPlan(ox) {
   let n = 0;
   for (const x of [-px, px]) for (const z of [-pz, pz]) {
     m.add(box(.9, H, .9, M.concrete, x, H / 2, z), (n++ / 4) * .2, up);
-    m.add(box(1.5, .5, 1.1, M.concreteD, x, H + .25, z), .22, up, m.g, E(2));
+    // testa del pilastro a forcella: due ali che accolgono l'anima della trave
+    m.add(box(1.5, .3, 1.1, M.concreteD, x, H + .15, z), .22, up, m.g, E(2));
+    for (const sx of [-1, 1]) m.add(box(.5, .9, 1.1, M.concrete, x + sx * .5, H + .75, z), .23, up, m.g, E(2));
   }
   n = 0;
   for (const x of [-px, px]) {
-    m.add(box(.8, 1.2, pz * 2 - .5, M.concrete, x, H + .5 + .6, 0), .34 + (n++) * .05, up, m.g, E(5));
+    // trave principale precompressa a doppio T: bulbo, anima sottile, piattabanda superiore
+    const I = poly([[-.3, 0], [.3, 0], [.3, .3], [.13, .5], [.13, 1.2], [.5, 1.3], [.5, 1.4], [-.5, 1.4], [-.5, 1.3], [-.13, 1.2], [-.13, .5], [-.3, .3]]);
+    const gI = new THREE.ExtrudeGeometry(I, { depth: pz * 2 - .5, bevelEnabled: false }); gI.translate(0, 0, -(pz * 2 - .5) / 2);
+    const bI = new THREE.Mesh(gI, M.concrete); bI.position.set(x, H + .3, 0); m.add(bI, .34 + (n++) * .05, up, m.g, E(5));
     const s = box(.1, .1, pz * 2 - 1, M.glow, x, H + .65, 0); s.userData.ns = true; m.add(s, .4, up, m.g, E(5));
   }
   const T = poly([[-.12, 0], [.12, 0], [.12, .55], [.5, .55], [.5, .8], [-.5, .8], [-.5, .55], [-.12, .55]]);
@@ -639,7 +659,7 @@ beats.forEach((b, i) => b.m.beat = i);
 let anchors = [], vw = innerWidth, vh = innerHeight, ranges = [], secR = {};
 function measure() {
   vw = innerWidth; vh = innerHeight;
-  anchors = [...document.querySelectorAll('[data-beat]')].map(el => ({ i: +el.dataset.beat, y: el.getBoundingClientRect().top + scrollY + el.offsetHeight / 2 })).sort((a, b) => a.i - b.i);
+  anchors = [...document.querySelectorAll('[data-beat]')].map(el => { const r = el.getBoundingClientRect(), top = r.top + scrollY, bot = r.bottom + scrollY; return el.classList.contains('tall') ? { i: +el.dataset.beat, y0: top + vh / 2, y1: Math.max(top + vh / 2, bot - vh / 2) } : { i: +el.dataset.beat, y0: top + r.height / 2, y1: top + r.height / 2 }; }).sort((a, b) => a.i - b.i);
   secR = {}; document.querySelectorAll('[data-beat]').forEach(el => { const r = el.getBoundingClientRect(); secR[+el.dataset.beat] = [r.top + scrollY, r.bottom + scrollY]; });
   ranges = [...document.querySelectorAll('.s3d')].map(el => { const r = el.getBoundingClientRect(); return [r.top + scrollY, r.bottom + scrollY]; });
   renderer.setSize(vw, vh, false);
@@ -654,10 +674,12 @@ function layoutView() {
 function frac() {
   const sy = scrollY + vh / 2;
   if (!anchors.length) return 0;
-  if (sy <= anchors[0].y) return 0;
-  for (let k = 0; k < anchors.length - 1; k++) {
-    const a = anchors[k], b = anchors[k + 1];
-    if (sy < b.y) return a.i + sm(clamp((sy - a.y) / (b.y - a.y), 0, 1)) * (b.i - a.i);
+  if (sy <= anchors[0].y0) return 0;
+  for (let k = 0; k < anchors.length; k++) {
+    const a = anchors[k];
+    if (sy <= a.y1) return a.i;
+    const nx = anchors[k + 1]; if (!nx) return a.i;
+    if (sy < nx.y0) return a.i + sm(clamp((sy - a.y1) / (nx.y0 - a.y1), 0, 1)) * (nx.i - a.i);
   }
   return anchors[anchors.length - 1].i;
 }
@@ -993,4 +1015,4 @@ function tick(now) {
 }
 measure();
 requestAnimationFrame(tick);
-window.__manini = { models, beats, S, mConn, go(i) { const a = anchors.find(a => a.i === i); scrollTo({ top: a.y - vh / 2, behavior: 'instant' }); fS = i; models.forEach(m => m.t = 1); }, get f() { return fS; } };
+window.__manini = { models, beats, S, mConn, go(i) { const a = anchors.find(a => a.i === i); scrollTo({ top: a.y0 - vh / 2, behavior: 'instant' }); fS = i; models.forEach(m => m.t = 1); }, get f() { return fS; } };
