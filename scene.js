@@ -228,7 +228,7 @@ function buildOndal(ox, o = {}) {
       }
     }
   }
-  m.roofRange = [roofStart, m.pieces.length];
+  m.roofRange = [roofStart, m.pieces.length]; m.bounds = [0, W, 0, D];
   if (walls) {
     const ph = 2.5, nR = Math.max(2, Math.floor((colH - .5) / ph)), nW = Math.max(3, Math.round(W / 5)), pw = W / nW; let k = 0;
     for (let r = 0; r < nR; r++) for (let c = 0; c < nW; c++) m.add(box(pw - .04, ph - .04, .3, M.panel, pw * c + pw / 2, ph * r + ph / 2, -.5), .78 + (k++ / (nR * nW)) * .2, V3(0, 0, -26));
@@ -264,7 +264,7 @@ const skyM = new THREE.MeshPhysicalMaterial({ color: 0x5f9fd0, roughness: .1, me
 function buildTau(ox) {
   const m = new Model(ox); m.stage(30);
   const L = 24, colH = 7, zsB = [-7.5, -2.5, 2.5, 7.5], FW = 1.8, GAP = 5 - FW - .02, SAG = .5;
-  m.g.userData.center = V3(0, 5, 0);
+  m.g.userData.center = V3(0, 5, 0); m.bounds = [-L / 2, L / 2, -7.5, 7.5];
   m.still(box(L + 6, .3, 24, M.concreteD, 0, -.15, 0));
   const prof = x => .75 + 1.1 * (1 - Math.pow(2 * x / L, 2));
   const dprof = x => -1.1 * 2 * (2 * x / L) * (2 / L);
@@ -895,21 +895,29 @@ const makeSky = mm => (mm.skyH || []).map((r, idx) => {
   mesh.frustumCulled = false; mesh.visible = false; mm.g.add(mesh);
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   pool.rotation.x = -Math.PI / 2; pool.position.y = .07; pool.visible = false; mm.g.add(pool);
-  return { r, mesh, pool, idx };
+  return { r, mesh, pool, idx, mm };
 });
 const shaftsC = makeSky(mOndal);
 function shaftsCUpdate(sv, w, list = shaftsC) {
   const on = w > .3 && sv.deg > 14;
-  list.forEach(({ r, mesh, pool, idx }) => {
+  list.forEach(({ r, mesh, pool, idx, mm }) => {
     mesh.visible = pool.visible = on; if (!on) return;
-    const v = sv.v, t = r.y / v.y, dx = -v.x * t, dz = -v.z * t, P = mesh.geometry.attributes.position.array;
+    const v = sv.v, bd = mm.bounds || [-1e3, 1e3, -1e3, 1e3], P = mesh.geometry.attributes.position.array, tF = r.y / v.y;
     const c = [[r.x0, r.z0], [r.x1, r.z0], [r.x1, r.z1], [r.x0, r.z1]];
-    c.forEach(([x, z], i) => { P.set([x, r.y, z], i * 3); P.set([x + dx, 0, z + dz], (i + 4) * 3); });
+    let tmin = tF;
+    c.forEach(([x, z], i) => {
+      let t = tF;
+      if (v.x > 1e-4) t = Math.min(t, (x - bd[0] - .3) / v.x); else if (v.x < -1e-4) t = Math.min(t, (bd[1] - .3 - x) / -v.x);
+      if (v.z > 1e-4) t = Math.min(t, (z - bd[2] - .3) / v.z); else if (v.z < -1e-4) t = Math.min(t, (bd[3] - .3 - z) / -v.z);
+      t = Math.max(.4, t); tmin = Math.min(tmin, t);
+      P.set([x, r.y, z], i * 3); P.set([x - v.x * t, Math.max(0, r.y - v.y * t), z - v.z * t], (i + 4) * 3);
+    });
     mesh.geometry.attributes.position.needsUpdate = true;
-    const sh = .88 + .12 * Math.sin(time * 1.8 + idx * 1.3);
+    const sh = .88 + .12 * Math.sin(time * 1.8 + idx * 1.3), full = tmin >= tF - 1e-3;
     mesh.material.opacity = .36 * w * sh;
+    const dx = -v.x * tmin, dz = -v.z * tmin;
     pool.position.set((r.x0 + r.x1) / 2 + dx, .07, (r.z0 + r.z1) / 2 + dz); pool.scale.set((r.x1 - r.x0) * 2.1 + Math.abs(dx) * .12, (r.z1 - r.z0) * 1.5, 1);
-    pool.material.opacity = .85 * w * clamp(v.y * 1.4, 0, 1) * sh;
+    pool.material.opacity = full ? .85 * w * clamp(v.y * 1.4, 0, 1) * sh : 0;
   });
 }
 const tauSky = makeSky(mTau);
