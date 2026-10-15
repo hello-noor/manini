@@ -593,14 +593,14 @@ const cfgOpts = () => {
 };
 const mOndal = buildOndal(0, { rows: [0, 20, 40], nz: 3, colH: 9, R: 44, cap: 'both' });
 const mOndalP = buildOndal(STEP, { rows: [0, 32], nz: 2, colH: 10.5, walls: false, R: 38 });
-const mOndalN = buildOndal(STEP * 9, { rows: [0, 26], nz: 3, colH: 8.5, omega: true, walls: false, R: 40, cap: 'shed' });
-const mTau = buildTau(STEP * 2);
-const mPlan = buildPlan(STEP * 3);
-const mSolai = buildSolai(STEP * 4);
-let mCfg = buildOndal(STEP * 8, cfgOpts());
-const mSeis = buildSeismic(STEP * 5);
-const mConn = buildConnect(STEP * 6);
-const mGreen = buildOndal(STEP * 7, { rows: [0, 18, 36], nz: 4, colH: 8, walls: false, flat: true, roofKinds: ['pv', 'green'], R: 40 });
+const mOndalN = buildOndal(STEP * 2, { rows: [0, 26], nz: 3, colH: 8.5, omega: true, walls: false, R: 40, cap: 'shed' });
+const mTau = buildTau(STEP * 3);
+const mPlan = buildPlan(STEP * 4);
+const mSolai = buildSolai(STEP * 5);
+let mCfg = buildOndal(STEP * 6, cfgOpts());
+const mSeis = buildSeismic(STEP * 7);
+const mConn = buildConnect(STEP * 8);
+const mGreen = buildOndal(STEP * 9, { rows: [0, 18, 36], nz: 4, colH: 8, walls: false, flat: true, roofKinds: ['pv', 'green'], R: 40 });
 const models = [mOndal, mOndalP, mOndalN, mTau, mPlan, mSolai, mCfg, mSeis, mConn, mGreen];
 
 /* ---------- label texts (click to expand) ---------- */
@@ -886,7 +886,7 @@ function cfgUI() {
 }
 function cfgRebuild() {
   const old = mCfg; scene.remove(old.g); old.g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-  const nm = buildOndal(STEP * 8, cfgOpts()); nm.t = REDUCED ? 1 : 0; nm.beat = 7; nm.target = 1;
+  const nm = buildOndal(STEP * 6, cfgOpts()); nm.t = REDUCED ? 1 : 0; nm.beat = 7; nm.target = 1;
   models[models.indexOf(old)] = nm; beats[7].m = nm; mCfg = nm;
   const SPN = CF.roof === 'new' ? 26 : 20, W = CF.x * SPN, D = CF.z * 7.5;
   beats[7].c.copy(nm.origin).add(V3(W / 2, CF.h * .55, D / 2)); beats[7].d = 40 + (W + D) * .85;
