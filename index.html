@@ -3,8 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Manini · Costruito meglio. In fabbrica.</title>
-<meta name="description" content="Ondal, TAU, Manini Plan, Solai: i sistemi prefabbricati Manini in 3D. Luce, sicurezza sismica, monitoraggio, sostenibilità.">
+<title>Manini · Il tuo prossimo edificio nasce qui</title>
+<meta name="description" content="Coperture, pilastri e travi costruiti in fabbrica con la precisione di una macchina. Ondal, TAU, Manini Plan e Solai in 3D, con sisma e monitoraggio da provare.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#00498a">
+<meta property="og:site_name" content="Manini Prefabbricati (concept)">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="it_IT">
+<meta property="og:title" content="Manini · Il tuo prossimo edificio nasce qui">
+<meta property="og:description" content="Coperture, pilastri e travi costruiti in fabbrica con la precisione di una macchina. Ondal, TAU, Manini Plan e Solai in 3D, con sisma e monitoraggio da provare.">
+<meta property="og:url" content="https://hello-noor.github.io/manini/">
+<meta property="og:image" content="https://hello-noor.github.io/manini/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Manini · Il tuo prossimo edificio nasce qui">
+<meta name="twitter:description" content="Coperture, pilastri e travi costruiti in fabbrica con la precisione di una macchina. Ondal, TAU, Manini Plan e Solai in 3D, con sisma e monitoraggio da provare.">
+<meta name="twitter:image" content="https://hello-noor.github.io/manini/og-image.png">
 <meta name="color-scheme" content="dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +37,7 @@
   .tag:before{content:"";position:absolute;left:8px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(77,163,255,.25)}
   .tag.on{opacity:1}
   .bar{position:fixed;inset:0 0 auto 0;z-index:30;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(16px,4vw,56px);background:rgba(12,12,14,.6);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line);font-size:13px}
-  .bar b{font-weight:700;letter-spacing:.12em}.bar nav{display:flex;gap:26px;color:var(--dim)}.bar nav a:hover{color:var(--ink)}
+  .brand{display:flex;align-items:center;gap:11px}.brand img{display:block}.brand span{display:flex;flex-direction:column;line-height:1}.brand b{font-weight:800;letter-spacing:.2em;font-size:14px}.brand i{font-style:normal;font:500 8.5px 'JetBrains Mono',monospace;letter-spacing:.32em;color:var(--dim);margin-top:4px}.bar nav{display:flex;gap:26px;color:var(--dim)}.bar nav a:hover{color:var(--ink)}
   .bar .go{background:var(--ink);color:#000;padding:6px 14px;border-radius:99px;font-weight:600}
   @media(max-width:760px){.bar nav a:not(.go){display:none}}
   main{position:relative;z-index:2}
@@ -33,7 +50,7 @@
   /* 3D sections: transparent so the canvas shows */
   .s3d{position:relative}
   .hero{min-height:100svh;display:flex;align-items:flex-end;padding:120px clamp(20px,6vw,80px) 9vh}
-  .hero .in{max-width:640px;text-shadow:0 2px 40px rgba(0,0,0,.6)}
+  .herologo{display:block;margin-bottom:26px;filter:drop-shadow(0 6px 24px rgba(0,73,138,.7))}.hl{background:linear-gradient(90deg,#4da3ff,#9ccbff);-webkit-background-clip:text;background-clip:text;color:transparent}.hero .in{max-width:660px;text-shadow:0 2px 40px rgba(0,0,0,.6)}
   .cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:30px}
   .scrollhint{position:absolute;right:clamp(20px,6vw,80px);bottom:9vh;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:var(--dim);writing-mode:vertical-rl}
   .step{min-height:115svh;display:flex;align-items:center;padding:0 clamp(20px,6vw,80px)}
@@ -93,15 +110,16 @@
 <body>
 <canvas id="gl"></canvas><div id="nogl"></div><div id="labels"></div>
 
-<header class="bar"><b>MANINI</b><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#connect">Connect</a><a href="#verde">Sostenibilità</a><a class="go" href="#contatti">Contatti</a></nav></header>
+<header class="bar"><a class="brand" href="#top" aria-label="Manini Prefabbricati"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#connect">Connect</a><a href="#verde">Sostenibilità</a><a class="go" href="#contatti">Contatti</a></nav></header>
 
 <main>
 <!-- HERO -->
-<section class="s3d hero" data-beat="0">
+<section class="s3d hero" data-beat="0" id="top">
   <div class="in">
-    <div class="eyebrow">Manini Prefabbricati · dal 1962</div>
-    <h1>Costruito meglio.<br>In fabbrica.</h1>
-    <p class="lead">Coperture, pilastri e travi che arrivano finiti, precisi, pronti da montare. Guarda come si costruisce un capannone, un pezzo alla volta.</p>
+    <img class="herologo" src="assets/manini-mark-white.svg" alt="Manini" width="54" height="46">
+    <div class="eyebrow">Manini · prefabbricati dal 1962</div>
+    <h1>Il tuo prossimo edificio <span class="hl">nasce qui.</span></h1>
+    <p class="lead">Coperture, pilastri e travi costruiti in fabbrica, con la precisione di una macchina e la cura di chi ci mette la firma da 64 anni. Guarda come nasce, un pezzo alla volta.</p>
     <div class="cta"><a class="btn" href="#sistemi">Scopri i sistemi</a><a class="btn ghost" href="#contatti">Parla con un tecnico ›</a></div>
   </div>
   <div class="scrollhint">SCORRI</div>
@@ -212,6 +230,7 @@
 </section>
 
 <section class="final" id="contatti">
+  <img class="rv" src="assets/manini-mark-white.svg" alt="Manini" width="64" height="55" style="margin:0 auto 28px;display:block">
   <div class="eyebrow rv">Il prossimo edificio</div>
   <h2 class="rv">Prefabbrichiamo<br>il futuro. Insieme.</h2>
   <p class="lead rv" style="max-width:30em;margin:0 auto 30px">Racconta ai tecnici Manini cosa vuoi costruire, o riqualificare.</p>
@@ -220,6 +239,7 @@
 </main>
 
 <footer>
+  <a class="brand" href="#top" style="margin-bottom:18px"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a>
   <p><b>Concept non ufficiale.</b> Progetto dimostrativo ispirato a manini.it, non realizzato né approvato da Manini Prefabbricati S.p.A. Nomi dei sistemi, numeri aziendali e referenze sono tratti dal sito pubblico; i modelli 3D sono ricostruzioni stilizzate, non disegni tecnici.</p>
   <p>I numeri sono quelli pubblicati sul sito: alcune pagine riportano valori diversi (ad esempio anni di storia, fatturato e persone). Le capacità produttive sono la somma dei quattro stabilimenti indicati su "Chi siamo".</p>
 </footer>

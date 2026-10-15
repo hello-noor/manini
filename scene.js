@@ -389,7 +389,7 @@ function buildConnect(ox) {
     // packets
     const speed = .12 + C.lvl * .35;
     C.ph = (C.ph + dt * speed) % 1;
-    for (let i = 0; i < NPk; i++) { const u = (C.ph + i / NPk) % 1; dummy.position.copy(curve.getPoint(u)); dummy.scale.setScalar(.8 + C.lvl * .8); dummy.updateMatrix(); packets.setMatrixAt(i, dummy.matrix); }
+    for (let i = 0; i < NPk; i++) { const u = ((C.ph + i / NPk) % 1 + 1) % 1; dummy.position.copy(curve.getPoint(u)); dummy.scale.setScalar(.8 + C.lvl * .8); dummy.updateMatrix(); packets.setMatrixAt(i, dummy.matrix); }
     packets.instanceMatrix.needsUpdate = true;
     // screen
     cg.fillStyle = '#0a0b0e'; cg.fillRect(0, 0, 640, 360);
@@ -521,7 +521,7 @@ function sph(t, d, az, el, out) {
 }
 function tick(now) {
   requestAnimationFrame(tick);
-  const dt = Math.min(.05, (now - last) / 1000); last = now; time += dt;
+  const dt = clamp((now - last) / 1000, 0, .05); last = now; time += dt;
   if (!anchors.length) measure();
   const f = frac();
   fS += (f - fS) * (1 - Math.exp(-dt * 4.5));
