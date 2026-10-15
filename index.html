@@ -39,7 +39,23 @@
   .bar{position:fixed;inset:0 0 auto 0;z-index:30;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(16px,4vw,56px);background:rgba(12,12,14,.6);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line);font-size:13px}
   .brand{display:flex;align-items:center;gap:11px}.brand img{display:block}.brand span{display:flex;flex-direction:column;line-height:1}.brand b{font-weight:800;letter-spacing:.2em;font-size:14px}.brand i{font-style:normal;font:500 8.5px 'JetBrains Mono',monospace;letter-spacing:.32em;color:var(--dim);margin-top:4px}.bar nav{display:flex;gap:26px;color:var(--dim)}.bar nav a:hover{color:var(--ink)}
   .bar .go{background:var(--ink);color:#000;padding:6px 14px;border-radius:99px;font-weight:600}
-  @media(max-width:760px){.bar nav a:not(.go){display:none}}
+  .burger{display:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);cursor:pointer;position:relative;padding:0;flex:none}
+  .burger span{position:absolute;left:11px;right:11px;height:2px;border-radius:2px;background:#fff;transition:transform .35s cubic-bezier(.2,.8,.2,1),opacity .2s,top .35s}
+  .burger span:nth-child(1){top:14px}.burger span:nth-child(2){top:19px}.burger span:nth-child(3){top:24px}
+  .burger.open span:nth-child(1){top:19px;transform:rotate(45deg)}.burger.open span:nth-child(2){opacity:0}.burger.open span:nth-child(3){top:19px;transform:rotate(-45deg)}
+  #menu{position:fixed;inset:52px 0 0 0;z-index:29;background:rgba(5,11,20,.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);opacity:0;pointer-events:none;transform:translateY(-12px);transition:opacity .3s,transform .4s cubic-bezier(.2,.8,.2,1);overflow-y:auto;overscroll-behavior:contain}
+  #menu.open{opacity:1;pointer-events:auto;transform:none}
+  .mn-in{padding:22px clamp(20px,6vw,40px) 60px;display:grid;gap:2px;max-width:560px;margin:0 auto}
+  .mn-h{font:500 11px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  #menu a{display:block;padding:13px 4px;font-size:21px;font-weight:600;letter-spacing:-.02em;border-bottom:1px solid var(--line);color:var(--ink);opacity:0;transform:translateY(10px);transition:opacity .4s,transform .4s}
+  #menu.open a{opacity:1;transform:none}
+  #menu.open a:nth-of-type(1){transition-delay:.04s}#menu.open a:nth-of-type(n+8){transition-delay:.12s}
+  .mn-g{font:500 11px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:14px 0 4px}
+  .mn-sub{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 12px;border-bottom:1px solid var(--line)}
+  #menu .mn-sub a{display:inline-block;padding:9px 15px;font-size:15px;font-weight:600;border:1px solid var(--line);border-radius:99px;background:rgba(255,255,255,.05)}
+  #menu a.cta{margin-top:14px;text-align:center;background:var(--brand);border:0;border-radius:99px;font-size:18px}
+  @media(max-width:900px){.burger{display:block}.bar nav a:not(.go){display:none}.bar nav{margin-left:auto;margin-right:10px}}
+  @media(min-width:901px){#menu{display:none}}
   main{position:relative;z-index:2}
   .eyebrow{font:500 12px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
   h1{font-size:clamp(40px,5.7vw,86px);line-height:.98;letter-spacing:-.04em;font-weight:800;margin:.18em 0 .28em}
@@ -282,6 +298,34 @@
   .selcard a{display:inline-block;margin-top:12px;color:var(--accent);font-size:14.5px;font-weight:500}
   .mapnote{font-size:12.5px;color:var(--dim);margin:0}
   @media(max-width:1000px){.mapgrid{grid-template-columns:1fr}.mapbox{max-height:none}}
+
+  .mapgrid{grid-template-columns:minmax(0,520px) minmax(0,1fr);justify-content:center;gap:28px}
+  .mleg{position:absolute;left:12px;top:12px;z-index:5;display:flex;flex-direction:column;gap:6px}
+  .mleg button{display:flex;align-items:center;gap:8px;font:600 12.5px Inter,sans-serif;color:var(--ink);background:rgba(6,14,26,.82);border:1px solid var(--line);border-radius:99px;padding:7px 12px 7px 10px;cursor:pointer;backdrop-filter:blur(8px);transition:.2s}
+  .mleg .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .mleg .n .dot{background:#4da3ff;box-shadow:0 0 10px 1px rgba(77,163,255,.7)}.mleg .r .dot{background:#34d399;box-shadow:0 0 10px 1px rgba(52,211,153,.7)}
+  .mleg i{font:500 11px 'JetBrains Mono',monospace;font-style:normal;color:var(--dim);margin-left:2px}
+  .mleg button[aria-pressed=false]{opacity:.45}.mleg button[aria-pressed=false] .dot{background:#666;box-shadow:none}
+  .mpop{position:absolute;z-index:6;width:276px;padding:16px 16px 14px;border-radius:18px;background:rgba(6,14,26,.96);border:1px solid rgba(120,170,230,.45);box-shadow:0 20px 60px rgba(0,0,0,.6);backdrop-filter:blur(12px);opacity:0;pointer-events:none;transform:translateY(8px) scale(.97);transition:opacity .22s,transform .3s cubic-bezier(.2,.9,.3,1)}
+  .mpop.on{opacity:1;pointer-events:auto;transform:none}
+  .mpop .x{position:absolute;right:8px;top:8px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:15px;line-height:1}
+  .mpop h4{margin:8px 24px 2px 0;font-size:16.5px;line-height:1.22;letter-spacing:-.01em}
+  .mpop .loc{font-size:13px;color:var(--dim)}
+  .mpop .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 2px}
+  .mpop .st{background:rgba(255,255,255,.06);border-radius:10px;padding:7px 10px}
+  .mpop .st span{display:block;font:500 9.5px 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  .mpop .st b{font-size:16px;letter-spacing:-.01em}
+  .mpop .ds{font-size:12.5px;line-height:1.4;color:#b5bfcc;margin:8px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .mpop .ap{font-size:11.5px;color:var(--dim);margin:8px 0 0;font-style:italic}
+  .mpop a{display:inline-block;margin-top:9px;color:var(--accent);font-size:13.5px;font-weight:500}
+  .mpop .bd{display:inline-block;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.08em;padding:4px 9px;border-radius:99px;text-transform:uppercase}
+  @media(max-width:600px){.mleg button{font-size:11px;padding:5px 9px 5px 8px}.mleg .dot{width:8px;height:8px}.mpop.sheet{padding:12px}.mpop.sheet .ds,.mpop.sheet .ap{display:none}.mpop.sheet h4{font-size:15px;margin-top:6px}.mpop.sheet .st b{font-size:14px}}
+  .chips2{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .chip2{display:inline-flex;align-items:center;gap:7px;font:600 13.5px Inter,sans-serif;color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:99px;padding:9px 13px;cursor:pointer;transition:.2s}
+  .chip2 em{font-style:normal;font-size:15px;line-height:1}.chip2 i{font:500 11px 'JetBrains Mono',monospace;font-style:normal;color:var(--dim)}
+  .chip2:hover{border-color:rgba(77,163,255,.6)}
+  .chip2.on{background:var(--brand);border-color:#4da3ff}.chip2.on i{color:#cfe6ff}
+  @media(max-width:1000px){.mapgrid{grid-template-columns:1fr}.mapbox{max-width:560px;margin:0 auto;width:100%}.mpop.sheet{left:10px!important;right:10px!important;top:auto!important;bottom:10px!important;width:auto}.mapside{max-width:560px;margin:0 auto;width:100%}}
   .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
   #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
@@ -291,7 +335,24 @@
 <div id="splash" aria-hidden="true"><div class="sp-in"><svg viewBox="0 0 400 345" width="132" height="114" fill="#fff"><path class="sb" style="--i:0" d="M17 0H140L200 47L260 0H383V75H260L200 107L140 75H17Z"/><path class="sb" style="--i:1" d="M17 84H140L200 116L260 84H383V159H260L200 191L140 159H17Z"/><path class="sb" style="--i:2" d="M17 168H140L200 200L260 168H383V243H260L200 275L140 243H17Z"/><path class="sb" style="--i:3" d="M17 252H140L200 284L260 252H383V327H260L200 343L140 327H17Z"/></svg><div class="sw"><b>MANINI</b><i>PREFABBRICATI</i></div></div></div>
 <canvas id="gl"></canvas><div id="nogl"></div><div id="labels"></div>
 
-<header class="bar"><a class="brand" href="#top" aria-label="Manini Prefabbricati"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#smart">Smart</a><a href="#sostenibilita">Sostenibilità</a><a href="#mappa">Realizzazioni</a><a class="go" href="#contatti">Contatti</a></nav></header>
+<header class="bar"><a class="brand" href="#top" aria-label="Manini Prefabbricati"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#smart">Smart</a><a href="#sostenibilita">Sostenibilità</a><a href="#mappa">Realizzazioni</a><a class="go" href="#contatti">Contatti</a></nav><button class="burger" id="burger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button></header>
+<div id="menu" aria-hidden="true">
+  <div class="mn-in">
+    <div class="mn-h">Vai a</div>
+    <a href="#top" data-m>Inizio</a>
+    <div class="mn-g">Sistemi</div>
+    <div class="mn-sub"><a href="#" data-b="1">Ondal</a><a href="#" data-b="2">Ondal+</a><a href="#" data-b="3">TAU</a><a href="#" data-b="4">Manini Plan</a><a href="#" data-b="5">Solai</a><a href="#" data-b="6">Tutti i tetti</a></div>
+    <a href="#perche" data-m>Perché Manini</a>
+    <a href="#sicurezza" data-m>Sicurezza sismica</a>
+    <a href="#connect" data-m>Manini Connect</a>
+    <a href="#smart" data-m>Smart Manufacturing e Control Room</a>
+    <a href="#verde" data-m>Tetto verde e fotovoltaico</a>
+    <a href="#sostenibilita" data-m>Sostenibilità</a>
+    <a href="#mappa" data-m>Mappa delle realizzazioni</a>
+    <a href="#referenze" data-m>Clienti</a>
+    <a href="#contatti" data-m class="cta">Contatti</a>
+  </div>
+</div>
 <nav id="systabs" aria-label="Sistemi"><button data-b="1">Ondal</button><button data-b="2">Ondal+</button><button data-b="3">TAU</button><button data-b="4">Manini Plan</button><button data-b="5">Solai</button><button data-b="6">Tutti i tetti</button></nav>
 
 <main>
@@ -528,17 +589,14 @@
     <p class="lead rv" style="max-width:34em">Ogni pin è un progetto pubblicato da Manini: nuove costruzioni in blu, riqualificazioni in verde.</p>
     <div class="mapgrid">
       <div class="mapbox rv" id="mapbox"><svg id="itmap" viewBox="-6 0 610 786" role="img" aria-label="Mappa dell'Italia con le realizzazioni Manini"></svg>
+        <div class="mleg" id="legend"><button class="n" data-k="n" aria-pressed="true"><span class="dot"></span>Nuove <i id="cN">—</i></button><button class="r" data-k="r" aria-pressed="true"><span class="dot"></span>Riqualificazioni <i id="cR">—</i></button></div>
         <div class="maptip" id="mtip"></div>
+        <div class="mpop" id="mpop" role="dialog" aria-live="polite"></div>
         <div class="mapctl"><button id="mzi" aria-label="Zoom avanti">+</button><button id="mzo" aria-label="Zoom indietro">−</button><button id="mz0" aria-label="Reimposta" style="font-size:15px">⤾</button></div>
-        <div class="maphint">TRASCINA · + / −</div></div>
+      </div>
       <aside class="mapside">
-        <div class="mcard legend" id="legend">
-          <button class="n" data-k="n"><span class="dot"></span><span>Nuove realizzazioni<small>Capannoni, centri commerciali, solai</small></span><i id="cN">—</i></button>
-          <button class="r" data-k="r"><span class="dot"></span><span>Riqualificazioni<small>Sismica, coperture, fotovoltaico</small></span><i id="cR">—</i></button>
-        </div>
-        <div class="mcard selcard" id="sel"><div class="eyebrow">Dettaglio</div><h4>Passa su un pin</h4><div class="meta">Su un telefono, toccalo. Ogni scheda rimanda alla pagina del progetto su manini.it.</div></div>
-        <div class="mcard"><label class="sl" for="sector">Settore</label><select id="sector"></select>
-          <div style="height:16px"></div><label class="sl">Regioni</label><div class="rbars" id="rbars"></div></div>
+        <div class="mcard"><label class="sl">Che tipo di progetto?</label><div class="chips2" id="chips"></div></div>
+        <div class="mcard"><label class="sl">Dove</label><div class="rbars" id="rbars"></div></div>
         <p class="mapnote" id="mnote"></p>
       </aside>
     </div>
@@ -546,7 +604,7 @@
 </section>
 
 <!-- REFERENZE -->
-<section class="solid">
+<section class="solid" id="referenze">
   <div class="wrap">
     <div class="eyebrow rv">Referenze</div>
     <h2 class="rv">Costruito per chi non può sbagliare.</h2>
