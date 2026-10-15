@@ -24,6 +24,85 @@
     addEventListener('resize', () => { if (innerWidth > 900) setMenu(false); });
   }
 
+  /* ---------- modulo di contatto ---------- */
+  // Invio: servizio FormSubmit (gratuito, senza backend). La prima richiesta reale genera una mail di attivazione al destinatario.
+  const FORM_TO = 'com@manini.it';
+  const FORM_ENDPOINT = 'https://formsubmit.co/ajax/' + FORM_TO;
+  const cform = $('#cform');
+  if (cform) {
+    const steps = [...cform.querySelectorAll('.cf-step')], dots = [...cform.querySelectorAll('.cf-prog span')];
+    const next = $('#cfNext'), back = $('#cfBack'), send = $('#cfSend'), err = $('#cfErr'), bar = $('#cfBar');
+    let cur = 1;
+    const val = n => (cform.elements[n] && cform.elements[n].value || '').trim();
+    const checked = n => (cform.querySelector(`input[name="${n}"]:checked`) || {}).value || '';
+    const show = n => {
+      cur = n; steps.forEach(s => s.classList.toggle('on', +s.dataset.s === n));
+      dots.forEach((d, i) => d.classList.toggle('on', i < n)); bar.style.width = `calc((100% - 28px) * ${(n - 1) / 2})`;
+      back.hidden = n === 1; next.hidden = n === 3; send.hidden = n !== 3; err.textContent = '';
+      if (n === 3) $('#cfRecap').textContent = [checked('intervention').replace('Rifacimento/Sostituzione copertura industriale e Efficientamento Energetico', 'Copertura ed efficientamento').replace('Manutenzione Ordinaria e/o Straordinaria', 'Manutenzione'), ({ '<1000 mq': 'meno di 1.000 m²', '1000<3000 mq': '1.000–3.000 m²', '>3000 mq': 'oltre 3.000 m²' })[checked('build-mq')], val('town')].filter(Boolean).join(' · ');
+    };
+    const bad = (el, msg) => { err.textContent = msg; const f = el.closest('.fld,.quals,.chk'); if (f) { f.classList.add('bad'); setTimeout(() => f.classList.remove('bad'), 2500); } el.focus && el.focus({ preventScroll: false }); return false; };
+    const okMail = v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+    const validate = n => {
+      if (n === 1) { if (!checked('intervention')) { err.textContent = 'Scegli il tipo di intervento.'; return false; } }
+      if (n === 2) {
+        if (!checked('build-mq')) { err.textContent = 'Indica la dimensione approssimativa.'; return false; }
+        if (!val('use')) return bad(cform.elements.use, 'Scrivi la destinazione d’uso.');
+        if (!val('town')) return bad(cform.elements.town, 'Scrivi città e provincia.');
+      }
+      if (n === 3) {
+        if (!checked('qualification')) { const q = cform.querySelector('.quals'); q.classList.add('bad'); setTimeout(() => q.classList.remove('bad'), 2500); err.textContent = 'Scegli la tua qualifica.'; return false; }
+        if (!val('your-name')) return bad(cform.elements['your-name'], 'Scrivi nome e cognome.');
+        if (!val('your-company')) return bad(cform.elements['your-company'], 'Scrivi il nome dell’azienda.');
+        if (!okMail(val('email'))) return bad(cform.elements.email, 'Controlla l’indirizzo email.');
+        if (val('tel').replace(/\D/g, '').length < 6) return bad(cform.elements.tel, 'Scrivi un numero di telefono.');
+        if (!val('your-area')) return bad(cform.elements['your-area'], 'Scrivi il settore produttivo.');
+        if (!cform.elements.privacy.checked) return bad(cform.elements.privacy, 'Serve il consenso al trattamento dei dati.');
+      }
+      return true;
+    };
+    next.addEventListener('click', () => { if (validate(cur)) show(cur + 1); });
+    back.addEventListener('click', () => show(cur - 1));
+    cform.querySelectorAll('.opt input').forEach(i => i.addEventListener('change', () => setTimeout(() => { if (cur === 1) show(2); }, 280)));
+    $('#usechips').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cform.elements.use.value = b.textContent; cform.elements.use.dispatchEvent(new Event('input')); });
+    cform.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); cur < 3 ? next.click() : send.click(); } });
+    const payload = () => {
+      const d = {
+        'Tipo di intervento': checked('intervention'), 'Area mq': checked('build-mq'), 'Destinazione d\'uso': val('use'), 'Città, provincia della realizzazione': val('town'),
+        'Qualifica': checked('qualification'), 'Nome e cognome': val('your-name'), 'Azienda': val('your-company'), 'Settore produttivo': val('your-area'), 'Email': val('email'), 'Telefono': val('tel'),
+        'Note aggiuntive': val('your-message'), 'Consenso privacy': 'sì', 'Richiesta di essere contattato': cform.elements.callback.checked ? 'sì' : 'no', 'Origine': 'Landing page 3D ' + location.href,
+      };
+      return { ...d, email: d['Email'], name: d['Nome e cognome'], _subject: 'Nuova richiesta dalla landing: ' + d['Tipo di intervento'], _template: 'table', _captcha: 'false', _honey: val('_honey') };
+    };
+    const mailto = p => 'mailto:' + FORM_TO + '?subject=' + encodeURIComponent(p._subject) + '&body=' + encodeURIComponent(Object.entries(p).filter(([k]) => !k.startsWith('_') && !['email', 'name'].includes(k)).map(([k, v]) => `${k}: ${v}`).join('\n'));
+    cform.addEventListener('submit', async e => {
+      e.preventDefault(); if (!validate(3)) return;
+      const p = payload(); if (p._honey) return;
+      send.classList.add('sending'); send.textContent = 'Invio in corso…'; err.textContent = '';
+      try {
+        const r = await fetch(FORM_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(p) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || (j.success !== true && j.success !== 'true')) throw new Error(j.message || 'errore ' + r.status);
+        cform.hidden = true; const ok = $('#cfOk'); ok.hidden = false; ok.focus({ preventScroll: true });
+        ok.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (x) {
+        err.innerHTML = 'Non sono riuscito a inviare la richiesta. <a href="' + mailto(p) + '" style="color:var(--accent);text-decoration:underline">Invia con la tua email</a> oppure scrivi a ' + FORM_TO + '.';
+      } finally { send.classList.remove('sending'); send.textContent = 'Invia la richiesta'; }
+    });
+    $('#cfAgain').addEventListener('click', () => { cform.reset(); cform.hidden = false; $('#cfOk').hidden = true; show(1); });
+    // precompilazione da altre sezioni (Manini Service, configuratore)
+    document.addEventListener('click', e => {
+      const t = e.target.closest('[data-prefill]'); if (!t) return;
+      e.preventDefault();
+      const r = [...cform.querySelectorAll('input[name="intervention"]')].find(i => i.value === t.dataset.prefill); if (r) r.checked = true;
+      let note = t.dataset.note || ''; if (t.dataset.cfg && window.__cfgText) note = window.__cfgText();
+      if (note) { cform.elements['your-message'].value = note; cform.elements['your-message'].dispatchEvent(new Event('input')); }
+      cform.hidden = false; $('#cfOk').hidden = true; show(r ? 2 : 1);
+      $('#contatti').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    show(1);
+  }
+
   /* ---------- foresta: cresce quando la sezione entra in vista ---------- */
   const sust = $('#sostenibilita');
   if (sust) new IntersectionObserver((es, o) => es.forEach(e => { if (e.isIntersecting) { sust.classList.add('go'); o.disconnect(); } }), { threshold: .2 }).observe(sust);

@@ -25,3 +25,11 @@ Colori del brand: blu `#00498a`, bianco, nero, grigi.
 
 `data/projects.json` contiene i 140 progetti (121 nuove realizzazioni, 19 riqualificazioni) letti dalle pagine pubbliche di manini.it. Le coordinate sono ricavate dal nome della località con OpenStreetMap Nominatim, quindi sono approssimate al comune. È una fotografia: non si aggiorna da sola.
 `data/italy.json` sono i confini regionali semplificati (openpolis/geojson-italy).
+
+## Cataloghi
+
+I cataloghi PDF Manini (Ondal, Ondal New, TAU, Solai, Coperture) sono stati usati come riferimento per geometria e testi dei modelli 3D. Non sono inclusi nel repository (`*.pdf` è in `.gitignore`).
+
+## Modulo di contatto
+
+Invia a `com@manini.it` tramite FormSubmit (`FORM_TO` e `FORM_ENDPOINT` in `extra.js`). La prima richiesta reale genera una mail di attivazione a quell'indirizzo: va confermata una volta. Se l'invio fallisce, il modulo propone l'invio con il client email.

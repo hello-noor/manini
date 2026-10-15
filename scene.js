@@ -73,6 +73,8 @@ const M = {
   grass: new THREE.MeshStandardMaterial({ color: 0x4f8a3a, roughness: 1, bumpMap: bump, bumpScale: 2 }),
   soil: new THREE.MeshStandardMaterial({ color: 0x3b2c20, roughness: 1 }),
   ptfe: new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: .4 }),
+  cap: new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: .42, metalness: .55 }),
+  lam: new THREE.MeshStandardMaterial({ color: 0xaab2ba, roughness: .35, metalness: .85, map: (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 16; const g = c.getContext('2d'); g.fillStyle = '#c8ced4'; g.fillRect(0, 0, 128, 16); for (let i = 0; i < 128; i += 8) { g.fillStyle = '#7f8993'; g.fillRect(i, 0, 3, 16); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 4); t.colorSpace = THREE.SRGBColorSpace; return t; })() }),
   deck: new THREE.MeshStandardMaterial({ color: 0xdfe2e3, roughness: .5, bumpMap: bump, bumpScale: .2 }),
   membrane: new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: .35, transparent: true, opacity: .45 }),
   glow: new THREE.MeshStandardMaterial({ color: 0x4da3ff, emissive: 0x2f8cff, emissiveIntensity: 2.2, roughness: .4 }),
@@ -84,12 +86,12 @@ const M = {
 class Model {
   constructor(ox, oz = 0) {
     this.g = new THREE.Group(); this.g.position.set(ox, 0, oz); scene.add(this.g);
-    this.pieces = []; this.ex = 0; this.exT = 0; this.ex2 = 0; this.ex2T = 0; this.det = false; this.t = REDUCED ? 1 : 0; this.target = 0; this.speed = .5; this.origin = V3(ox, 0, oz);
+    this.pieces = []; this.ex = 0; this.exT = 0; this.ex2 = 0; this.ex2T = 0; this.det = false; this.hidden = new Set(); this.t = REDUCED ? 1 : 0; this.target = 0; this.speed = .5; this.origin = V3(ox, 0, oz);
   }
-  add(mesh, delay = 0, from = V3(0, 16, 0), parent = this.g, exp = null) {
+  add(mesh, delay = 0, from = V3(0, 16, 0), parent = this.g, exp = null, grp = '') {
     if (!mesh.userData.ns) mesh.castShadow = mesh.material !== M.glass; mesh.receiveShadow = true;
     parent.add(mesh);
-    this.pieces.push({ m: mesh, home: mesh.position.clone(), off: from.clone().add(V3((Math.random() - .5) * 5, 0, (Math.random() - .5) * 5)), delay, exp });
+    this.pieces.push({ m: mesh, home: mesh.position.clone(), off: from.clone().add(V3((Math.random() - .5) * 5, 0, (Math.random() - .5) * 5)), delay, exp, grp });
     return mesh;
   }
   still(mesh, parent = this.g) { mesh.receiveShadow = true; parent.add(mesh); return mesh; }
@@ -106,7 +108,7 @@ class Model {
       p.m.position.copy(p.home).addScaledVector(p.off, 1 - k);
       if (p.exp) p.m.position.addScaledVector(p.exp, this.ex);
       if (p.exp2) p.m.position.addScaledVector(p.exp2, this.ex2);
-      p.m.visible = k > .002 && !(p.hideDet && this.det);
+      p.m.visible = k > .002 && !(p.hideDet && this.det) && !(p.grp && this.hidden.has(p.grp));
     }
   }
 }
@@ -136,12 +138,20 @@ function buildOndal(ox, o = {}) {
   const xr = rows[rows.length - 1];
   for (const x of rows) for (const z of zs) { const c = m.add(box(.8, colH, .8, M.concrete, x, colH / 2, z), (n++ / nc) * .22, V3(0, 20, 0)); if (x === xr) m.dyn.right.push(c); }
   n = 0;
-  for (const x of rows) for (let j = 0; j < nz; j++) { const b = m.add(box(.7, 1.2, pitch - .8, M.concrete, x, colH - .6, zs[j] + pitch / 2), .22 + (n++ / (rows.length * nz)) * .2, V3(0, 20, 0)); if (x === xr) m.dyn.right.push(b); }
-  const y0 = colH - .75, H = 2.3, L0 = .55, T = .22;
+  if (o.omega) {
+    // Super-Omega: trave a sezione a omega con appoggi bassi per i tegoli
+    const om = poly([[-1, 0], [1, 0], [1, .32], [.46, .32], [.46, 1.55], [-.46, 1.55], [-.46, .32], [-1, .32]]);
+    for (const x of rows) { const g = new THREE.ExtrudeGeometry(om, { depth: D, bevelEnabled: false }); const bm = new THREE.Mesh(g, M.concrete); bm.position.set(x, colH, 0); m.add(bm, .22 + (n++ / rows.length) * .2, V3(0, 20, 0)); if (x === xr) m.dyn.right.push(bm); }
+  } else {
+    for (const x of rows) for (let j = 0; j < nz; j++) { const b = m.add(box(.7, 1.2, pitch - .8, M.concrete, x, colH - .6, zs[j] + pitch / 2), .22 + (n++ / (rows.length * nz)) * .2, V3(0, 20, 0)); if (x === xr) m.dyn.right.push(b); }
+  }
+  n = 0;
+  const y0 = o.omega ? colH + .3 : colH - .75, H = 2.3, L0 = .55, T = .22;
+  const cap = o.cap || 'shed', WING = 1.6, WRISE = .72, HG = 1.5, SAG = .8; m.cappelle = [];
   const roofs = { pv: [], green: [], tegoli: [] };
   n = 0; const nt = (rows.length - 1) * nz;
   for (let i = 0; i < rows.length - 1; i++) {
-    const L = rows[i + 1] - rows[i] - .6, xm = (rows[i] + rows[i + 1]) / 2;
+    const L = rows[i + 1] - rows[i] - (o.omega ? 1.8 : .6), xm = (rows[i] + rows[i + 1]) / 2; if (i === 0) m.dyn.L0 = L;
     if (o.roof === 'tau' || o.roof === 'plan') {
       if (o.roof === 'tau') {
         const nT = Math.max(2, Math.round(D / 5));
@@ -166,15 +176,28 @@ function buildOndal(ox, o = {}) {
       const dl = .42 + (n++ / nt) * .4;
       const z0 = zs[j];
       if (!flat) {
-        const sh = poly([[0, L0], [pitch, H], [pitch, H - T], [0, L0 - T]]);
-        const t = extrudeX(sh, L, M.concrete); t.position.set(xm, y0, z0); m.add(t, dl); m.dyn.span.push(t);
-        m.dyn.span.push(m.add(box(L, L0 - T, .32, M.concrete, xm, y0 + (L0 - T) / 2, z0 + .18), dl + .02));
-        m.dyn.span.push(m.add(box(L, H - T, .32, M.concrete, xm, y0 + (H - T) / 2, z0 + pitch - .18), dl + .02));
-        const gl = box(L, H - L0, .07, M.glass, xm, y0 + L0 + (H - L0) / 2, z0 + pitch - .02); m.add(gl, dl + .1); m.dyn.span.push(gl); m.glassStrips.push({ x0: xm - L / 2, x1: xm + L / 2, z: z0 + pitch - .02, yb: y0 + L0, yt: y0 + H });
-        if (o.pv) {
-          const ang = Math.atan((H - L0) / pitch);
-          const p = box(L - 1, .05, pitch - 1.2, M.pv, xm, y0 + (H + L0) / 2 + .1, z0 + pitch / 2); p.rotation.x = -ang; m.add(p, dl + .12); roofs.pv.push(p);
+        const gp = pitch - 2 * WING, ty = y0 + WRISE + .15;
+        // tegolo alare a V sulla linea dei pilastri (primo giro di j)
+        if (j === 0) for (let q = 0; q <= nz; q++) {
+          const V = poly([[-WING, WRISE], [0, 0], [WING, WRISE], [WING, WRISE + .15], [0, .15], [-WING, WRISE + .15]]);
+          const t = extrudeX(V, L, M.concrete); t.position.set(xm, y0, zs[q]); m.add(t, dl - .02 + q * .01); m.dyn.span.push(t);
         }
+        const zA = z0 + WING;
+        if (cap === 'shed' || cap === 'both') {
+          const sp = poly([[0, 0], [gp, HG], [gp, HG - .1], [0, -.1]]);
+          const c1 = extrudeX(sp, L, M.cap); c1.position.set(xm, ty, zA); m.add(c1, dl + .04, V3(0, 16, 0), m.g, null, 'shed'); m.dyn.span.push(c1); m.cappelle.push(c1);
+          const gl = box(L, HG, .07, M.glass, xm, ty + HG / 2, zA + gp); m.add(gl, dl + .1, V3(0, 16, 0), m.g, null, 'shed'); m.dyn.span.push(gl);
+          m.glassStrips.push({ x0: xm - L / 2, x1: xm + L / 2, z: zA + gp, yb: ty, yt: ty + HG });
+          if (o.pv) { const ang = Math.atan(HG / gp), p = box(L - 1, .05, Math.hypot(gp, HG) - .8, M.pv, xm, ty + HG / 2 + .12, zA + gp / 2); p.rotation.x = -ang; m.add(p, dl + .12); roofs.pv.push(p); }
+        }
+        if (cap === 'curve' || cap === 'both') {
+          const R = (gp * gp / 4 + SAG * SAG) / (2 * SAG), a0 = Math.asin(gp / 2 / R), pts = [], pts2 = [];
+          for (let q = 0; q <= 18; q++) { const a = -a0 + 2 * a0 * q / 18, zz = R * Math.sin(a) + gp / 2, yy = R * Math.cos(a) - (R - SAG); pts.push([zz, yy]); pts2.push([R * .0 + (R - .09) * Math.sin(a) + gp / 2, (R - .09) * Math.cos(a) - (R - SAG)]); }
+          const cs = new THREE.Shape(); pts.forEach((p, k) => k ? cs.lineTo(p[0], p[1]) : cs.moveTo(p[0], p[1])); pts2.reverse().forEach(p => cs.lineTo(p[0], p[1])); cs.closePath();
+          const c2 = extrudeX(cs, L, M.cap); c2.position.set(xm, ty, zA); m.add(c2, dl + .04, V3(0, 16, 0), m.g, null, 'curve'); m.dyn.span.push(c2); m.cappelle.push(c2);
+          for (let q = 0; q < 3; q++) { const lx = box(L * .2, .05, gp * .42, M.glass, xm + (q - 1) * L * .3, ty + SAG + .02, zA + gp / 2); m.add(lx, dl + .1, V3(0, 16, 0), m.g, null, 'curve'); }
+        }
+        if (o.pv && 0) { /* riservato */ }
       } else {
         // flat Ondal: ribbed slab
         const t = box(L, .5, pitch - .05, M.concrete, xm, y0 + .25, z0 + pitch / 2); m.add(t, dl);
@@ -208,7 +231,8 @@ function buildOndal(ox, o = {}) {
     m.dyn.span.forEach(c => { ph(c).home.x = S / 2; c.scale.x = (S - .6) / m.dyn.L0; });
     m.dyn.slab.scale.x = (S + 4) / (m.dyn.W + 4); m.dyn.slab.position.x = S / 2;
   };
-  if (!m.stat) m.stat = { name: 'Tegoli', n: (rows.length - 1) * nz };
+  if (!m.stat) m.stat = { name: 'Tegoli', n: (rows.length - 1) * (flat ? nz : nz + 1) };
+  if (cap === 'both') m.hidden.add('curve');
   m.roofs = roofs;
   return m;
 }
@@ -216,55 +240,68 @@ function buildOndal(ox, o = {}) {
 /* ---------- TAU ---------- */
 function buildTau(ox) {
   const m = new Model(ox); m.stage(30);
-  const L = 24, colH = 7, zsB = [-7.5, -2.5, 2.5, 7.5], bw = 1.0, GAP = 5 - bw - .04;
+  const L = 24, colH = 7, zsB = [-7.5, -2.5, 2.5, 7.5], FW = 1.0, GAP = 5 - FW - .06, SAG = .5;
   m.g.userData.center = V3(0, 5, 0);
   m.still(box(L + 6, .3, 24, M.concreteD, 0, -.15, 0));
-  const prof = x => .7 + 1.15 * (1 - Math.pow(2 * x / L, 2));
-  const dprof = x => -1.15 * 2 * (2 * x / L) * (2 / L);
-  const shape = new THREE.Shape(); shape.moveTo(-L / 2, 0); shape.lineTo(L / 2, 0);
-  const N = 40; for (let i = 0; i <= N; i++) { const x = L / 2 - (i / N) * L; shape.lineTo(x, prof(x)); } shape.closePath();
+  const prof = x => .75 + 1.1 * (1 - Math.pow(2 * x / L, 2));
+  const dprof = x => -1.1 * 2 * (2 * x / L) * (2 / L);
+  const N = 40;
+  const stemS = new THREE.Shape(); stemS.moveTo(-L / 2, 0); stemS.lineTo(L / 2, 0);
+  for (let i = 0; i <= N; i++) { const x = L / 2 - (i / N) * L; stemS.lineTo(x, prof(x) - .16); } stemS.closePath();
+  const flS = new THREE.Shape(); for (let q = 0; q <= N; q++) { const x = -L / 2 + q * L / N; q ? flS.lineTo(x, prof(x)) : flS.moveTo(x, prof(x)); } for (let q = N; q >= 0; q--) { const x = -L / 2 + q * L / N; flS.lineTo(x, prof(x) - .16); } flS.closePath();
   let n = 0;
   for (const z of zsB) for (const x of [-L / 2, L / 2]) m.add(box(1.0, colH, 1.2, M.concrete, x, colH / 2, z), (n++ / 8) * .2, V3(0, 20, 0));
   n = 0;
   for (const z of zsB) {
-    const g = new THREE.ExtrudeGeometry(shape, { depth: bw, bevelEnabled: false, curveSegments: 12 }); g.translate(0, 0, -bw / 2);
-    const bm = new THREE.Mesh(g, M.concrete); bm.position.set(0, colH, z); m.add(bm, .25 + (n++ / 4) * .3, V3(0, 20, 0));
+    // trave TAU: anima sottile, piattabanda superiore larga 1 m, bulbo inferiore
+    const gS = new THREE.ExtrudeGeometry(stemS, { depth: .26, bevelEnabled: false }); gS.translate(0, 0, -.13);
+    const st = new THREE.Mesh(gS, M.concrete); st.position.set(0, colH, z); m.add(st, .25 + (n++ / 4) * .3, V3(0, 20, 0));
+    const gF = new THREE.ExtrudeGeometry(flS, { depth: FW, bevelEnabled: false, curveSegments: 1 }); gF.translate(0, 0, -FW / 2);
+    const fl = new THREE.Mesh(gF, M.concrete); fl.position.set(0, colH, z); m.add(fl, .27 + (n) * .02, V3(0, 20, 0));
+    m.add(box(L, .26, .56, M.concrete, 0, colH - .13, z), .26 + n * .02, V3(0, 20, 0));
     m.add(box(1.1, .2, 1.5, M.concreteD, -L / 2, colH - .1, z), .2); m.add(box(1.1, .2, 1.5, M.concreteD, L / 2, colH - .1, z), .2);
   }
-  // roof deck between the beams: a complete, continuous roof following the parabolic extrados
-  const dk = new THREE.Shape(); for (let q = 0; q <= N; q++) { const x = -L / 2 + q * L / N; q ? dk.lineTo(x, prof(x)) : dk.moveTo(x, prof(x)); }
-  for (let q = N; q >= 0; q--) { const x = -L / 2 + q * L / N; dk.lineTo(x, prof(x) - .18); } dk.closePath();
+  // cappella curva fra le travi (segue la parabola); lucernari a raso in vetro
+  const archH = zz => { const r = (zz / (GAP / 2)); return Math.abs(r) >= 1 ? 0 : SAG * (1 - r * r); };
+  const arch = (xc, w, zc, mat, lift) => {
+    const g = new THREE.PlaneGeometry(w, GAP, Math.max(2, Math.round(w / L * N)), 12); g.rotateX(-Math.PI / 2);
+    const P = g.attributes.position; for (let i = 0; i < P.count; i++) { const x = P.getX(i) + xc, zz = P.getZ(i); P.setY(i, prof(clamp(x, -L / 2, L / 2)) - .08 + archH(zz) + lift); }
+    g.computeVertexNormals(); const mesh = new THREE.Mesh(g, mat); mesh.position.set(xc, colH, zc); mesh.userData.ns = false; return mesh;
+  };
   for (let i = 0; i < 3; i++) {
-    const g = new THREE.ExtrudeGeometry(dk, { depth: GAP, bevelEnabled: false, curveSegments: 1 }); g.translate(0, 0, -GAP / 2);
-    const mesh = new THREE.Mesh(g, M.deck); mesh.position.set(0, colH, (zsB[i] + zsB[i + 1]) / 2); m.add(mesh, .62 + i * .05, V3(0, 20, 0));
+    const zc = (zsB[i] + zsB[i + 1]) / 2;
+    const c = arch(0, L - 1.2, zc, M.cap, 0); c.material = M.cap.clone(); c.material.side = THREE.DoubleSide; m.add(c, .62 + i * .05, V3(0, 20, 0));
+    if (i === 1) for (const xk of [-8, 0, 8]) { const gm = arch(xk, 4.2, zc, M.glass, .03); m.add(gm, .8, V3(0, 20, 0)); gm.castShadow = false; }
   }
-  // rain: falls from the sky, lands on the deck and runs down the parabola to the eaves
+  // pioggia: cade, tocca la copertura curva, scorre lungo la parabola, scende
   const NP = 320, geo = new THREE.BufferGeometry(), pos = new Float32Array(NP * 6);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const pts = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xa8dcff, transparent: true, opacity: .9 }));
   pts.frustumCulled = false; m.g.add(pts);
-  const resp = d => { d.x = (Math.random() * 2 - 1) * L / 2; d.z = zsB[0] + Math.random() * (zsB[3] - zsB[0]); d.y = colH + prof(d.x) + 2 + Math.random() * 22; d.v = 0; d.s = 0; d.dir = d.x < 0 ? -1 : 1; };
+  const surf = (x, z) => { const dz = (((z + 7.5) % 5) + 5) % 5 - 2.5; return colH + prof(clamp(x, -L / 2, L / 2)) + archH(dz) + .02; };
+  const resp = d => { d.x = (Math.random() * 2 - 1) * L / 2; d.z = zsB[0] + Math.random() * (zsB[3] - zsB[0]); d.y = colH + prof(d.x) + 3 + Math.random() * 22; d.v = 0; d.s = 0; d.dir = d.x < 0 ? -1 : 1; };
   const drops = Array.from({ length: NP }, () => { const d = {}; resp(d); return d; });
   m.rainN = NP;
   m.rain = dt => {
     drops.forEach((d, i) => {
       let len = 1.1;
-      if (d.s === 0) { d.v += 16 * dt; d.y -= d.v * dt; const sf = colH + prof(d.x) + .08; len = 1.1 + Math.min(d.v * .05, .8); if (d.y <= sf) { d.y = sf; d.s = 1; d.v = 0; } }
-      else if (d.s === 1) { d.x += d.dir * (1.8 + Math.abs(d.x) * .45) * dt * 2.2; d.y = colH + prof(clamp(d.x, -L / 2, L / 2)) + .08; len = .35; if (Math.abs(d.x) >= L / 2) { d.s = 2; d.v = 0; } }
+      if (d.s === 0) { d.v += 16 * dt; d.y -= d.v * dt; const sf = surf(d.x, d.z); len = 1.1 + Math.min(d.v * .05, .8); if (d.y <= sf) { d.y = sf; d.s = 1; d.v = 0; } }
+      else if (d.s === 1) { d.x += d.dir * (1.8 + Math.abs(d.x) * .45) * dt * 2.2; d.y = surf(d.x, d.z); len = .35; if (Math.abs(d.x) >= L / 2) { d.s = 2; d.v = 0; } }
       else { d.v += 14 * dt; d.y -= d.v * dt; len = 1 + Math.min(d.v * .05, .8); if (d.y < 0) resp(d); }
       const y = i >= m.rainN ? -80 : d.y, dx = d.s === 1 ? -d.dir * len : 0, dy = d.s === 1 ? 0 : len;
       pos.set([d.x, y, d.z, d.x + dx, y + dy, d.z], i * 6);
     });
     geo.attributes.position.needsUpdate = true;
   };
-  // photovoltaic option: panels fixed on the deck, no holes in the waterproofing
+  // fotovoltaico: telaio fissato senza forare il manto
   const pvM = new THREE.MeshPhysicalMaterial({ color: 0x14264a, roughness: .22, metalness: .55, clearcoat: 1, clearcoatRoughness: .1, emissive: 0x1f5fd0, emissiveIntensity: .2 });
   const pvList = [];
   for (let i = 0; i < 3; i++) for (const kx of [-8, -4, 0, 4, 8]) for (const dz of [-.95, .95]) {
-    const p = box(2.1, .06, 1.7, pvM, kx, 0, (zsB[i] + zsB[i + 1]) / 2 + dz); p.rotation.set(-.12, 0, Math.atan(dprof(kx))); p.castShadow = true; p.visible = false; m.g.add(p);
-    pvList.push({ m: p, y: colH + prof(kx) + .3 });
+    const zc = (zsB[i] + zsB[i + 1]) / 2 + dz, p = box(2.1, .06, 1.5, pvM, kx, 0, zc);
+    p.rotation.set(dz < 0 ? .22 : -.22, 0, Math.atan(dprof(kx))); p.castShadow = true; p.visible = false; m.g.add(p);
+    pvList.push({ m: p, y: surf(kx, zc) + .22 });
   }
-  m.pv = { n: pvList.length, area: pvList.length * 2.1 * 1.7, t: 0, target: 0 };
+  m.pv = { n: pvList.length, area: pvList.length * 2.1 * 1.5, t: 0, target: 0 };
   m.pvUpdate = (dt, time) => {
     const q = m.pv, d = q.target - q.t; q.t += Math.sign(d) * Math.min(Math.abs(d), dt * .7);
     pvList.forEach((p, i) => { const k = eo(clamp((q.t * 1.7 - i / pvList.length * .7) / .3, 0, 1)); p.m.visible = k > .01; p.m.scale.setScalar(Math.max(k, .001)); p.m.position.y = p.y + (1 - k) * 5; });
@@ -307,28 +344,50 @@ function buildPlan(ox) {
 }
 
 /* ---------- Solai ---------- */
+const rrPath = (cx, cy, w, h, r) => { const p = new THREE.Path(), x0 = cx - w / 2, x1 = cx + w / 2, y0 = cy - h / 2, y1 = cy + h / 2; r = Math.min(r, w / 2, h / 2);
+  p.moveTo(x0 + r, y0); p.lineTo(x1 - r, y0); p.absarc(x1 - r, y0 + r, r, -Math.PI / 2, 0, false); p.lineTo(x1, y1 - r); p.absarc(x1 - r, y1 - r, r, 0, Math.PI / 2, false); p.lineTo(x0 + r, y1); p.absarc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI, false); p.lineTo(x0, y0 + r); p.absarc(x0 + r, y0 + r, r, Math.PI, Math.PI * 1.5, false); return p; };
 const pokerShape = (th, w = 1.2) => {
   const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(w, 0); sh.lineTo(w, th); sh.lineTo(0, th); sh.closePath();
-  const nH = 5, r = th * .31;
-  for (let i = 0; i < nH; i++) { const p = new THREE.Path(); p.absarc(w / (nH * 2) + i * w / nH, th / 2, r, 0, Math.PI * 2, true); sh.holes.push(p); }
+  if (th <= .34) { const nH = th <= .26 ? 6 : 5, r = th * (nH === 6 ? .28 : .3); for (let i = 0; i < nH; i++) { const p = new THREE.Path(); p.absarc(w / (nH * 2) + i * w / nH, th / 2, r, 0, Math.PI * 2, true); sh.holes.push(p); } }
+  else { const nH = 4, hw = th <= .42 ? .2 : .17, hh = th - (th <= .42 ? .13 : .12); for (let i = 0; i < nH; i++) sh.holes.push(rrPath(w / (nH * 2) + i * w / nH, th / 2, hw, hh, hw * (th <= .42 ? .45 : .5))); }
   return sh;
 };
 const piShape = th => poly([[0, th], [2.5, th], [2.5, th - .12], [2.3, th - .12], [2.3, 0], [2.1, 0], [2.1, th - .12], [.4, th - .12], [.4, 0], [.2, 0], [.2, th - .12], [0, th - .12]]);
+// Solman / Pluriman: piastre con nervature scatolari cave; fra le piastre lamiera grecata collaborante
+function boxRibGeoms(th, ribs, wBox, wFl, len) {
+  const fl = .1, hb = th - fl, out = [];
+  ribs.forEach(cz => {
+    const sh = new THREE.Shape(); sh.moveTo(cz - wBox / 2, 0); sh.lineTo(cz + wBox / 2, 0); sh.lineTo(cz + wBox / 2, hb); sh.lineTo(cz - wBox / 2, hb); sh.closePath();
+    sh.holes.push(rrPath(cz, hb / 2, wBox - .2, hb - .18, .04)); out.push([extrudeXGeo(sh, len), 0]);
+    const f = new THREE.BoxGeometry(len, fl, wFl); f.translate(0, hb + fl / 2, cz); out.push([f, 1]);
+  });
+  return out;
+}
 function buildSolai(ox) {
   const m = new Model(ox); m.stage(24);
   m.g.userData.center = V3(0, 1.5, 0);
-  m.still(box(22, .3, 16, M.concreteD, 0, -.15, 0));
-  const len = 10, y0 = 1.1, up = V3(0, 18, 0);
-  for (const x of [-len / 2 + 1, len / 2 - 1]) m.add(box(.9, y0, 15, M.concrete, x, y0 / 2, 0), 0, V3(0, 16, 0));
-  const pk = (th, z, d) => { const e = extrudeX(pokerShape(th), len, M.concrete); e.position.set(0, y0, z); m.add(e, d, up); return e; };
-  pk(.2, -6.8, .2); const mP = pk(.32, -5.5, .3); pk(.5, -4.2, .4);
-  const mPi = extrudeX(piShape(.6), len, M.concrete); mPi.position.set(0, y0, .8); m.add(mPi, .5, up);
-  m.add(box(len, .1, 2.5, M.steel, 0, y0 + .05, 5.55), .65, up);
-  const mPl = box(len, .65, 2.5, M.concrete, 0, y0 + .1 + .325, 5.55); m.add(mPl, .7, up);
-  const pc = mesh => m.pieces.find(p => p.m === mesh);
-  m.setPoker = th => { mP.geometry.dispose(); mP.geometry = extrudeXGeo(pokerShape(th), len); };
-  m.setPi = th => { mPi.geometry.dispose(); mPi.geometry = extrudeXGeo(piShape(th), len); };
-  m.setPlu = th => { const h = th - .1; mPl.geometry.dispose(); mPl.geometry = new THREE.BoxGeometry(len, h, 2.5); pc(mPl).home.y = y0 + .1 + h / 2; };
+  m.still(box(22, .3, 17, M.concreteD, 0, -.15, 0));
+  const len = 10, y0 = 1.1, up = V3(0, 18, 0), Z = { pk: -7.4, pi: -3.1, so: -.2, pl: 2.9 };
+  for (const x of [-len / 2 + 1, len / 2 - 1]) m.add(box(.9, y0, 17, M.concrete, x, y0 / 2, 0), 0, V3(0, 16, 0));
+  const shade = o => { o.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } }); return o; };
+  // Poker: tre lastre affiancate larghe 1,20 m
+  const pk = [0, 1, 2].map(k => { const e = extrudeX(pokerShape(.32), len, M.concrete); e.position.set(0, y0, Z.pk + k * 1.2); m.add(e, .2 + k * .05, up); return e; });
+  const pi = extrudeX(piShape(.6), len, M.concrete); pi.position.set(0, y0, Z.pi); m.add(pi, .45, up);
+  const mkBox = (zc, ribs, wBox, wFl) => { const g = new THREE.Group(); g.position.set(0, y0, zc); m.add(g, .6, up); const lam = []; g.userData = { ribs, wBox, wFl }; return g; };
+  const so = mkBox(Z.so, [.65, 1.85], .62, .84), pl = mkBox(Z.pl, [.38, 1.25, 2.12], .42, .76);
+  const fill = (g, th) => {
+    while (g.children.length) { const c = g.children.pop(); c.geometry && c.geometry.dispose(); }
+    const { ribs, wBox, wFl } = g.userData, parts = boxRibGeoms(th, ribs, wBox, wFl, len);
+    parts.forEach(([geo]) => { const mesh = new THREE.Mesh(geo, M.concrete); mesh.castShadow = mesh.receiveShadow = true; g.add(mesh); });
+    // lamiera grecata fra le piastre
+    const hb = th - .1, edges = [0, ...ribs.flatMap(c => [c - wFl / 2, c + wFl / 2]), 2.5];
+    for (let k = 0; k < edges.length; k += 2) { const a = edges[k], b2 = edges[k + 1]; if (b2 - a > .06) { const l = new THREE.Mesh(new THREE.BoxGeometry(len - .1, .035, b2 - a - .02), M.lam); l.position.set(0, hb + .05, (a + b2) / 2); l.receiveShadow = true; g.add(l); } }
+  };
+  fill(so, .75); fill(pl, .75);
+  m.setPoker = th => { pk.forEach(e => { e.geometry.dispose(); e.geometry = extrudeXGeo(pokerShape(th), len); }); };
+  m.setPi = th => { pi.geometry.dispose(); pi.geometry = extrudeXGeo(piShape(th), len); };
+  m.setSolman = th => fill(so, th); m.setPluriman = th => fill(pl, th);
+  m.Z = Z;
   return m;
 }
 
@@ -497,12 +556,15 @@ const CF = { x: 2, z: 3, h: 9, roof: 'shed' };
 const cfgOpts = () => {
   const o = { rows: Array.from({ length: CF.x + 1 }, (_, i) => i * 20), nz: CF.z, colH: CF.h, walls: true };
   if (CF.roof === 'pv') o.pv = true;
+  if (CF.roof === 'curve') o.cap = 'curve';
+  if (CF.roof === 'new') { o.omega = true; o.rows = Array.from({ length: CF.x + 1 }, (_, i) => i * 26); }
   if (CF.roof === 'flat') { o.flat = true; o.roofKinds = ['pv', 'green']; }
   if (CF.roof === 'tau' || CF.roof === 'plan') o.roof = CF.roof;
   return o;
 };
-const mOndal = buildOndal(0, { rows: [0, 20, 40], nz: 3, colH: 9, R: 44 });
+const mOndal = buildOndal(0, { rows: [0, 20, 40], nz: 3, colH: 9, R: 44, cap: 'both' });
 const mOndalP = buildOndal(STEP, { rows: [0, 32], nz: 2, colH: 10.5, walls: false, R: 38 });
+const mOndalN = buildOndal(STEP * 9, { rows: [0, 26], nz: 3, colH: 8.5, omega: true, walls: false, R: 40, cap: 'shed' });
 const mTau = buildTau(STEP * 2);
 const mPlan = buildPlan(STEP * 3);
 const mSolai = buildSolai(STEP * 4);
@@ -510,12 +572,12 @@ let mCfg = buildOndal(STEP * 8, cfgOpts());
 const mSeis = buildSeismic(STEP * 5);
 const mConn = buildConnect(STEP * 6);
 const mGreen = buildOndal(STEP * 7, { rows: [0, 18, 36], nz: 4, colH: 8, walls: false, flat: true, roofKinds: ['pv', 'green'], R: 40 });
-const models = [mOndal, mOndalP, mTau, mPlan, mSolai, mCfg, mSeis, mConn, mGreen];
+const models = [mOndal, mOndalP, mOndalN, mTau, mPlan, mSolai, mCfg, mSeis, mConn, mGreen];
 
 /* ---------- label texts (click to expand) ---------- */
 const INFO = {
   'Shed vetrato · luce naturale': 'Il vetro dello shed porta luce naturale dentro il capannone, con meno illuminazione artificiale. Lo shed e il tetto piano possono convivere sullo stesso tetto.',
-  'Tegoli · interasse 5,00–7,50 m': 'I tegoli sono gli elementi di copertura in cemento armato. Sono progettati, prodotti e impermeabilizzati in fabbrica, con isolamento integrato che evita la condensa.',
+  'Tegoli · interasse 5,00–7,50 m': 'Il tegolo alare, a V, è l’elemento di base: poggia sui pilastri e la cappella, curva o shed, copre lo spazio tra due tegoli. Ondal è la prima copertura con tegoli alari in cemento armato.',
   'Pilastri prefabbricati': 'Pilastri in c.a. prodotti in stabilimento e montati in cantiere. Possono integrare già in produzione i sensori di Manini Connect.',
   'Luce fino a 32 m': 'Ondal+ porta il tegolo fino a 32 m tra i pilastri: meno pilastri, meno plinti, più superficie utile in pianta.',
   'Maglia 25 × 25 m e oltre': 'Maglie di pilastri di 25 × 25 m, anche maggiori nei casi speciali, con ancoraggi sismici pensati per le grandi maglie.',
@@ -525,13 +587,17 @@ const INFO = {
   'Incastro trave a T': 'La trave secondaria a T si appoggia sulla trave principale precompressa. Dettaglio schematico di un collegamento tipico: appoggio, spinotti e sigillatura.',
   'Appoggio in neoprene': 'Un cuscinetto elastomerico distribuisce il carico e lascia piccoli movimenti dovuti a dilatazioni e deformazioni. Dettaglio tipico, non un disegno esecutivo Manini.',
   'Spinotti in acciaio': 'Barre in acciaio attraversano l’appoggio e collegano le travi, impedendo lo scorrimento. Dettaglio schematico.',
+  'Trave Super-Omega': 'Progettata per realizzare grandi maglie strutturali, ha una sezione che permette di installare carroponti, eliminando le vie di corsa e riducendo l’ingombro degli impianti. Prevede fissaggi antisismici particolari.',
+  'Tegoli su appoggi bassi': 'I tegoli si appoggiano alla base della trave Super-Omega, non sopra: si ottimizza l’altezza interna. Ondal New si fornisce con lucernari a raso o con infissi shed.',
+  'Fondazioni più piccole': 'Il peso più contenuto della copertura Ondal New riduce le dimensioni delle fondazioni.',
   'Pilastro': 'Pilastro prefabbricato in c.a.: la base di Manini Plan per edifici industriali, espositivi e commerciali.',
   'Trave principale precompressa': 'Trave principale in cemento armato precompresso: i trefoli tesi in fabbrica la rendono più snella e resistente a parità di sezione.',
   'Trave secondaria a T': 'Travi secondarie a sezione a T, anch’esse precompresse, appoggiate sulle travi principali.',
   'Manto isolante continuo': 'Un manto continuo di coibentazione e impermeabilizzazione, personalizzabile in base al livello di isolamento richiesto.',
-  'Poker · 20–50 cm': 'Solaio alveolare estruso in 10 spessori da 20 a 50 cm: rigido, resistente al fuoco, con intradosso piano. Per edifici multipiano, parcheggi e uffici.',
-  'PI-Greco · 40–80 cm': 'Solaio classico largo 250 cm, spessori 40–80 cm. Grandi aperture facili, anche lucernari. Resistenza al fuoco R120.',
-  'Pluriman · Solman': 'Per grandi luci e carichi importanti: lamiera collaborante sotto la soletta, spessori 60, 75 e 90 cm, intradosso piano.',
+  'Poker': 'Alveolare estruso, largo 120 cm, in 10 spessori da 20 a 50 cm: rigidità, resistenza al fuoco anche R120–R180, minimo spessore d’impalcato, intradosso piano. Possibili forature sulle lastre e mensole a scomparsa con il “Sistema Certificato Manini”.',
+  'PI-Greco': 'Largo 250 cm, spessori da 40 a 80 cm. Forature grandi, lucernari a raso o shed. R120. Gli impianti passano tra le nervature e sono possibili travi porta-solaio di varie forme.',
+  'Solman': 'Per grandi luci e forti sovraccarichi, con canale per gli impianti nell’intradosso. Altezze 60, 75 e 90 cm, larghezza 250 cm. Lamiera grecata sotto la soletta armata.',
+  'Pluriman': 'Intradosso piano con meno giunti e, in alcuni casi, resistenza al fuoco superiore a R180. Altezze 60, 75 e 90 cm, larghezza 250 cm. Lamiera grecata sotto la soletta armata.',
   'Sensori nel pilastro': 'Sensori di ultima generazione integrati nei pilastri durante la produzione: rilevano anomalie statiche e dinamiche dei carichi.',
   'Trasmettitore sul tetto': 'Una scatola di trasmissione sul tetto raccoglie i dati dei sensori e li invia al cloud.',
   'Cloud': 'I dati arrivano in tempo reale. Gli algoritmi segnalano subito le anomalie e inviano avvisi o allarmi dopo sisma, bombe d’acqua o vento eccezionale.',
@@ -558,9 +624,10 @@ const beats = [
   B(mOndal, V3(14, 4.5, 11), 108, -36, 21),
   B(mOndal, V3(24, 8.5, 9), 58, -62, 11, [[[12, 10.3, 15], 'Shed vetrato · luce naturale'], [[30, 9.2, 7.5], 'Tegoli · interasse 5,00–7,50 m'], [[0, 5, 22.5], 'Pilastri prefabbricati']]),
   B(mOndalP, V3(16, 6, 7.5), 74, -34, 18, [[[16, 11.6, 0], 'Luce fino a 32 m'], [[32, 5, 15], 'Maglia 25 × 25 m e oltre']]),
+  B(mOndalN, V3(12, 9.5, 11), 66, -40, 16, [[[0, 11.4, 11], 'Trave Super-Omega'], [[12, 10.4, 7.5], 'Tegoli su appoggi bassi'], [[24, 6, 0], 'Fondazioni più piccole']]),
   B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua']]),
   B(mPlan, V3(0, 7.5, 0), 48, -42, 22, [[[-9, 4, 6], 'Pilastro'], [[9, 9.6, 0], 'Trave principale precompressa'], [[0, 11.2, -2.4], 'Trave secondaria a T'], [[-5, 11.2, 6], 'Manto isolante continuo']]),
-  B(mSolai, V3(5, 1.6, -5.5), 15, 76, 6, [[[5, 1.3, -6.3], 'Poker · 20–50 cm'], [[5, 2.0, 2.0], 'PI-Greco · 40–80 cm'], [[5, 1.9, 5.5], 'Pluriman · Solman']]),
+  B(mSolai, V3(5, 1.6, -5.8), 17, 70, 16, [[[5, 1.5, -5.8], 'Poker'], [[5, 1.8, -1.9], 'PI-Greco'], [[5, 1.9, 1.1], 'Solman'], [[5, 1.9, 4.2], 'Pluriman']]),
   B(mCfg, V3(20, 5, 11), 80, -36, 22),
   B(mSeis, V3(0, 4.5, 0), 40, 0, 8, []),
   B(mConn, V3(8, 6.5, 2), 48, -26, 12, [[[0, 9.4, 0], 'Sensori nel pilastro'], [[1.2, 11.9, 0], 'Trasmettitore sul tetto'], [[9, 16.8, -3], 'Cloud'], [[18, 5.7, 7], 'Control Room']]),
@@ -615,8 +682,9 @@ const snTs = [$('#snT'), $('#snT2')], snPs = [$('#snP'), $('#snP2')];
 snTs.forEach(t => t.addEventListener('input', () => { sun.play = false; sun.h = +t.value; snPs.forEach(b => b.textContent = '▶'); }));
 snPs.forEach(b => b.addEventListener('click', () => { sun.play = !sun.play; snPs.forEach(x => x.textContent = sun.play ? '⏸' : '▶'); }));
 function sunUI(sv) {
-  const direct = sv.deg > 14 ? clamp(sv.v.z / .5, 0, 1) : 0, pct = Math.round(direct * 100);
-  const txt = direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dalle vetrate dello shed (${pct}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa dallo shed.`;
+  const curved = mOndal.hidden.has('shed');
+  const direct = !curved && sv.deg > 14 ? clamp(sv.v.z / .5, 0, 1) : 0, pct = Math.round(direct * 100);
+  const txt = curved ? 'Cappella curva: la luce arriva dai lucernari a raso e dall’alto.' : direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dalle vetrate dello shed (${pct}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa dallo shed.`;
   for (const k of ['', '2']) { $('#snO' + k).textContent = fmtH(sun.h); $('#snM' + k).style.width = pct + '%'; $('#snS' + k).textContent = txt; }
 }
 // visible sun + arc
@@ -678,6 +746,11 @@ function fireUpdate(dt) {
 }
 
 /* ---------- UI: Ondal+ span ---------- */
+$('#capT').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; $('#capT').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  const curve = b.dataset.c === 'curve'; mOndal.hidden[curve ? 'add' : 'delete']('shed'); mOndal.hidden[curve ? 'delete' : 'add']('curve');
+  const lb = beats[1].labels[0].el.querySelector('b'); lb.textContent = curve ? 'Cappella curva · lucernari a raso' : 'Shed vetrato · luce naturale';
+});
 const mgS = $('#mgS');
 function mgUpdate() {
   const S2 = +mgS.value; mOndalP.setSpan(S2); $('#mgO').textContent = S2 + ' m';
@@ -696,11 +769,11 @@ tuR.dispatchEvent(new Event('input'));
 $('#tuPv').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); const on = b.classList.contains('on'); mTau.pv.target = on ? 1 : 0; $('#tuP').textContent = on ? `${mTau.pv.n} pannelli · ${fmt(mTau.pv.area * .2)} kWp` : '—'; });
 
 /* ---------- UI: Plan explode + joint detail ---------- */
-const plLabMain = beats[4].labels, PO = mPlan.origin;
+const plLabMain = beats[5].labels, PO = mPlan.origin;
 const plLabDet = [[V3(-8.8, 10.7, 0), 'Incastro trave a T'], [V3(-8.6, 9.8, 0), 'Appoggio in neoprene'], [V3(-8.85, 9.35, 0), 'Spinotti in acciaio']].map(([p, t]) => mkLabel(PO.clone().add(p), t));
 $('#plEx').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; $('#plEx').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  const x = +b.dataset.x, bt = beats[4];
+  const x = +b.dataset.x, bt = beats[5];
   mPlan.exT = x === 1 ? 1 : 0; mPlan.ex2T = x === 2 ? 1 : 0; mPlan.det = x === 2; mPlan.detGroup.visible = x === 2;
   if (x === 0) { bt.d = 48; bt.az = -42; bt.el = 22; bt.c.copy(PO).add(V3(0, 7.5, 0)); }
   if (x === 1) { bt.d = 66; bt.az = -42; bt.el = 22; bt.c.copy(PO).add(V3(0, 13, 0)); }
@@ -711,36 +784,37 @@ $('#plEx').addEventListener('click', e => {
 
 /* ---------- UI: Solai selector + thickness ---------- */
 const SO = [
-  { z: -5.5, t: '<b>Poker.</b> Alveolare estruso in 10 spessori, da 20 a 50 cm. Rigido, resistente al fuoco, intradosso piano. Per multipiano, parcheggi, uffici. I valori intermedi sono indicativi.' },
-  { z: 2.1, t: '<b>PI-Greco.</b> Largo 250 cm, spessori 40–80 cm. Grandi aperture e lucernari facili, resistenza al fuoco R120.' },
-  { z: 5.55, t: '<b>Pluriman e Solman.</b> Per grandi luci e carichi importanti: lamiera collaborante, spessori 60, 75 e 90 cm, generalmente R120.' },
+  { z: -5.8, t: '<b>Poker.</b> Alveolare estruso, largo 120 cm, in 10 spessori da 20 a 50 cm. Rigido, resistente al fuoco, con il minimo spessore d’impalcato e intradosso perfettamente piano. Il più usato nei pluripiano: commerciale, parcheggi, sociale, terziario avanzato.' },
+  { z: -1.9, t: '<b>PI-Greco.</b> Uno dei solai industriali più classici: largo 250 cm, spessori da 40 a 80 cm. Facile fare forature di grandi dimensioni e prevedere lucernari a raso o shed. Si fornisce con resistenza al fuoco R120 e gli impianti passano tra le nervature.' },
+  { z: 1.1, t: '<b>Solman.</b> Per grandi luci e forti sovraccarichi, largo 250 cm, con altezze di 60, 75 e 90 cm. L’intradosso è finito e un canale ospita gli impianti. Lastre metalliche reggono il getto della soletta armata. In genere R120.' },
+  { z: 4.2, t: '<b>Pluriman.</b> Per carichi molto impegnativi, largo 250 cm, con altezze di 60, 75 e 90 cm. L’intradosso piano, con meno giunti, in alcune situazioni arriva a una resistenza al fuoco superiore a R180. È una delle ultime innovazioni della prefabbricazione.' },
 ];
 const SOC = [
   { min: 1, max: 10, step: 1, val: 4, th: v => .2 + (v - 1) * .3 / 9, txt: v => '≈ ' + Math.round((.2 + (v - 1) * .3 / 9) * 100) + ' cm', fn: 'setPoker', lab: 'Poker' },
   { min: 40, max: 80, step: 5, val: 60, th: v => v / 100, txt: v => v + ' cm', fn: 'setPi', lab: 'PI-Greco' },
-  { min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setPlu', lab: 'Pluriman · Solman' },
+  { min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setSolman', lab: 'Solman' },
+  { min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setPluriman', lab: 'Pluriman' },
 ];
 const soT = $('#soT'); let soCur = 0;
-function soApply() {
-  const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v);
-  mSolai[c.fn](th); $('#soTo').textContent = c.txt(v);
-  const lb = beats[5].labels[soCur]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(v)}`; lb.p.y = 1.1 + th + .3;
-}
+const soLab = (i, th) => { const c = SOC[i], lb = beats[6].labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)}`; lb.p.y = 1.1 + th + .35; };
+function soApply() { const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v); mSolai[c.fn](th); $('#soTo').textContent = c.txt(v); soLab(soCur, th); }
 function soSet(i) {
   soCur = i; const c = SOC[i];
   soT.min = c.min; soT.max = c.max; soT.step = c.step; soT.value = c.val;
-  beats[5].c.z = mSolai.origin.z + SO[i].z; $('#soI').innerHTML = SO[i].t; soApply();
+  beats[6].c.z = mSolai.origin.z + SO[i].z; $('#soI').innerHTML = SO[i].t; soApply();
 }
 soT.addEventListener('input', soApply);
 $('#soSel').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#soSel').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); soSet(+b.dataset.s); });
-soSet(0); soApply();
-[1, 2].forEach(i => { const c = SOC[i], th = c.th(c.val); mSolai[c.fn](th); const lb = beats[5].labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)}`; lb.p.y = 1.1 + th + .3; });
+SOC.forEach((c, i) => { const th = c.th(c.val); mSolai[c.fn](th); soLab(i, th); });
+soSet(0);
 
 /* ---------- UI: configurator ---------- */
 const ROOFINFO = {
   shed: '<b>Ondal shed.</b> Vetri verso l’alto: luce naturale dentro il capannone. Tegoli a interasse 5,00–7,50 m.',
   pv: '<b>Ondal Powershed®.</b> Lo shed con fotovoltaico integrato su telaio metallico: energia dal tetto, collegamenti in opera senza lavorare in quota.',
   flat: '<b>Ondal piano.</b> Qui con tetto verde e fotovoltaico a file alterne: acqua trattenuta, meno caldo, energia.',
+  curve: '<b>Ondal cappella curva.</b> Lo stesso tegolo alare con cappella a volta e lucernari a raso: luce dall’alto, senza vetrate verticali.',
+  new: '<b>Ondal New.</b> Trave Super-Omega con tegoli sugli appoggi bassi, per grandi maglie e fondazioni più piccole.',
   tau: '<b>TAU.</b> Travi con estradosso parabolico e intradosso piano, luci da 12 a 32 m.',
   plan: '<b>Manini Plan.</b> Travi principali precompresse, travi secondarie a T e manto isolante continuo.',
 };
@@ -748,29 +822,36 @@ const ROOFLAB = {
   shed: ['Shed vetrato · luce naturale', 'Tegoli · interasse 5,00–7,50 m'],
   pv: ['Ondal Powershed®', 'Fotovoltaico senza forare il manto'],
   flat: ['Tetto verde · deflusso −70%', 'Fotovoltaico senza forare il manto'],
+  curve: ['Cappella curva · lucernari a raso', 'Tegolo alare a V'],
+  new: ['Trave Super-Omega', 'Tegoli su appoggi bassi'],
   tau: ['Estradosso parabolico', 'Intradosso piano'],
   plan: ['Manto isolante continuo', 'Trave secondaria a T'],
 };
 function cfgLabels() {
-  const W = CF.x * 20, D = CF.z * 7.5, c = mCfg.origin, P = (x, y, z) => c.clone().add(V3(x, y, z)), r = ROOFLAB[CF.roof], y = CF.h + 2.6;
-  beats[6].labels.forEach(l => l.el.remove());
-  beats[6].labels = [mkLabel(P(W * .45, y, D * .5), r[0]), mkLabel(P(W * .85, y - .6, D * .15), r[1]), mkLabel(P(0, CF.h * .55, D), 'Pilastri prefabbricati')];
+  const SPN = CF.roof === 'new' ? 26 : 20, W = CF.x * SPN, D = CF.z * 7.5, c = mCfg.origin, P = (x, y, z) => c.clone().add(V3(x, y, z)), r = ROOFLAB[CF.roof], y = CF.h + 2.6;
+  beats[7].labels.forEach(l => l.el.remove());
+  beats[7].labels = [mkLabel(P(W * .45, y, D * .5), r[0]), mkLabel(P(W * .85, y - .6, D * .15), r[1]), mkLabel(P(0, CF.h * .55, D), 'Pilastri prefabbricati')];
 }
+window.__cfgText = () => { const SPN = CF.roof === 'new' ? 26 : 20, nm = { shed: 'Ondal shed', curve: 'Ondal cappella curva', new: 'Ondal New', pv: 'Ondal Powershed', flat: 'Ondal piano con verde e fotovoltaico', tau: 'TAU', plan: 'Manini Plan' }[CF.roof]; return `Configurazione scelta sul sito: ${nm}, ${CF.x} campate da ${SPN} m, ${CF.z} moduli da 7,5 m, altezza ${CF.h} m (circa ${CF.x * SPN * CF.z * 7.5} m²).`; };
 function cfgUI() {
-  const W = CF.x * 20, D = CF.z * 7.5;
-  $('#cfXo').textContent = `${CF.x} × 20 m`; $('#cfZo').textContent = `${CF.z} × 7,5 m`; $('#cfHo').textContent = CF.h + ' m';
+  const SPN = CF.roof === 'new' ? 26 : 20, W = CF.x * SPN, D = CF.z * 7.5;
+  $('#cfXo').textContent = `${CF.x} × ${SPN} m`; $('#cfZo').textContent = `${CF.z} × 7,5 m`; $('#cfHo').textContent = CF.h + ' m';
   $('#cfA').textContent = fmt(W * D) + ' m²'; $('#cfC').textContent = (CF.x + 1) * (CF.z + 1);
   $('#cfNl').textContent = mCfg.stat.name; $('#cfN').textContent = mCfg.stat.n; $('#cfHh').textContent = fmt(CF.h - 1.2, 1) + ' m';
   $('#cfInfo').innerHTML = ROOFINFO[CF.roof];
 }
 function cfgRebuild() {
   const old = mCfg; scene.remove(old.g); old.g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-  const nm = buildOndal(STEP * 8, cfgOpts()); nm.t = REDUCED ? 1 : 0; nm.beat = 6; nm.target = 1;
-  models[models.indexOf(old)] = nm; beats[6].m = nm; mCfg = nm;
-  const W = CF.x * 20, D = CF.z * 7.5;
-  beats[6].c.copy(nm.origin).add(V3(W / 2, CF.h * .55, D / 2)); beats[6].d = 40 + (W + D) * .85;
-  cfgLabels(); cfgUI();
+  const nm = buildOndal(STEP * 8, cfgOpts()); nm.t = REDUCED ? 1 : 0; nm.beat = 7; nm.target = 1;
+  models[models.indexOf(old)] = nm; beats[7].m = nm; mCfg = nm;
+  const SPN = CF.roof === 'new' ? 26 : 20, W = CF.x * SPN, D = CF.z * 7.5;
+  beats[7].c.copy(nm.origin).add(V3(W / 2, CF.h * .55, D / 2)); beats[7].d = 40 + (W + D) * .85;
+  cfgLabels(); cfgUI(); mantoApply();
 }
+const MANTI = { lamiera: { c: 0xc9ced3, m: .8, r: .4, t: '<b>Lamiera.</b> Lastre curve in lamiera zincata preverniciata, con fissaggi meccanici e giunti che seguono la dilatazione. Coibentazione con materassino in lana di vetro o di roccia, o pannelli rigidi di polistirene.' }, inox: { c: 0xeef2f6, m: .95, r: .22, t: '<b>Acciaio inox.</b> Lastre sagomate in acciaio inox con fissaggi e giunti idonei, per un’impermeabilizzazione che dura.' }, guaina: { c: 0xb59a62, m: 0, r: .7, t: '<b>Guaina.</b> Membrane elastomeriche protette da scaglie di ardesia, colorabili. I colori chiari riflettono i raggi solari e riducono l’isola di calore.' }, tpo: { c: 0xf2f3f1, m: 0, r: .45, t: '<b>TPO.</b> Membrana sintetica in poliolefina termoplastica, resistente ai raggi UV, con prestazioni energetiche alte e lunga durata.' } };
+let manto = 'lamiera';
+function mantoApply() { const k = MANTI[manto]; (mCfg.cappelle || []).forEach(c => { c.material = c.material === M.cap ? c.material.clone() : c.material; c.material.color.setHex(k.c); c.material.metalness = k.m; c.material.roughness = k.r; }); $('#mnI').innerHTML = k.t; }
+$('#mnT').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#mnT').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); manto = b.dataset.k; mantoApply(); });
 let cfT = 0; const cfgSoon = () => { clearTimeout(cfT); cfT = setTimeout(cfgRebuild, 160); };
 $('#cfRoof').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#cfRoof').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); CF.roof = b.dataset.r; cfgRebuild(); });
 for (const [id, k] of [['#cfX', 'x'], ['#cfZ', 'z'], ['#cfH', 'h']]) $(id).addEventListener('input', e => { CF[k] = +e.target.value; cfgUI(); cfgSoon(); });
@@ -880,12 +961,12 @@ function tick(now) {
   key.target.position.copy(camTgt);
   sunSprite.position.copy(sm0.origin).addScaledVector(sv.v, 100); sunSprite.material.opacity = sw; sunSprite.visible = sw > .02;
   sunArc.position.copy(sm0.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
-  shaftsUpdate(shaftsA, sv, sw1); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3);
+  shaftsUpdate(shaftsA, sv, mOndal.hidden.has('shed') ? 0 : sw1); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3);
   if (sw > .02) sunUI(sv);
   rim.position.set(camTgt.x + 30, camTgt.y + 20, camTgt.z - 34); rim.target.position.copy(camTgt);
   const ab = Math.round(fS); if (ab !== activeBeat) { activeBeat = ab; closeTags(); }
   const cy0 = scrollY + vh / 2;
-  tabs.classList.toggle('on', !!secR[1] && !!secR[6] && cy0 > secR[1][0] && cy0 < secR[6][1]);
+  tabs.classList.toggle('on', !!secR[1] && !!secR[7] && cy0 > secR[1][0] && cy0 < secR[7][1]);
   tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.b === ab));
   const run = inView() || Math.abs(fS - Math.round(fS)) > .02;
   if (run) {
@@ -902,7 +983,8 @@ function tick(now) {
         tmp.copy(l.p).project(camera);
         const x = (tmp.x * .5 + .5) * vw, y = (-tmp.y * .5 + .5) * vh;
         l.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-12px,-50%)`;
-        l.el.classList.toggle('on', show && tmp.z < 1);
+        const covered = vw > 900 ? x < Math.min(560, vw * .4) : y > vh * .5;
+        l.el.classList.toggle('on', show && tmp.z < 1 && !covered);
       });
     });
     labelsShown = true;

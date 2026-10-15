@@ -355,6 +355,89 @@
   .chip2:hover{border-color:rgba(77,163,255,.6)}
   .chip2.on{background:var(--brand);border-color:#4da3ff}.chip2.on i{color:#cfe6ff}
   @media(max-width:1000px){.mapgrid{grid-template-columns:1fr}.mapbox{max-width:560px;margin:0 auto;width:100%}.mpop.sheet{left:10px!important;right:10px!important;top:auto!important;bottom:10px!important;width:auto}.mapside{max-width:560px;margin:0 auto;width:100%}}
+
+  /* service */
+  .svc{background:radial-gradient(ellipse 70% 60% at 85% 0%,rgba(0,73,138,.3),transparent 70%),var(--bg)}
+  .svc-hd{display:grid;grid-template-columns:1.2fr 1fr;gap:30px;align-items:end}
+  .svc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:48px}
+  .svc-c{position:relative;text-align:left;font:inherit;color:var(--ink);cursor:pointer;background:linear-gradient(170deg,#0d2036,#08111f);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:24px 20px 20px;display:flex;flex-direction:column;gap:8px;min-height:250px;overflow:hidden;transition:transform .4s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .4s}
+  .svc-c:before{content:"";position:absolute;inset:auto -30% -45% -30%;height:70%;background:radial-gradient(ellipse,rgba(77,163,255,.28),transparent 70%);transition:transform .6s}
+  .svc-c:hover{transform:translateY(-6px) rotate(-.4deg);border-color:rgba(77,163,255,.7);box-shadow:0 26px 60px -22px rgba(30,120,230,.7)}
+  .svc-c:hover:before{transform:translateY(-20px) scale(1.15)}
+  .svc-c .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:rgba(77,163,255,.12);border:1px solid rgba(77,163,255,.35);margin-bottom:8px;position:relative}
+  .svc-c .ic svg,.oi svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .svc-c b{font-size:19px;letter-spacing:-.02em;line-height:1.15;position:relative}
+  .svc-c span:not(.ic){font-size:14.5px;color:rgba(232,240,252,.7);line-height:1.4;position:relative}
+  .svc-c i{margin-top:auto;font:600 13px Inter,sans-serif;font-style:normal;color:var(--accent);position:relative}
+  @media(max-width:1100px){.svc-grid{grid-template-columns:repeat(3,1fr)}.svc-hd{grid-template-columns:1fr}}
+  @media(max-width:700px){.svc-grid{grid-template-columns:1fr 1fr;gap:10px}.svc-c{min-height:200px;padding:18px 15px}.svc-c b{font-size:16.5px}.svc-c span:not(.ic){font-size:13px}}
+  @media(max-width:420px){.svc-grid{grid-template-columns:1fr}.svc-c{min-height:0}}
+  /* contact */
+  .contact{background:radial-gradient(ellipse 70% 60% at 15% 100%,rgba(0,73,138,.4),transparent 70%),radial-gradient(ellipse 60% 50% at 90% 0%,rgba(77,163,255,.12),transparent 70%),var(--bg);padding:clamp(80px,11vw,150px) clamp(16px,5vw,80px);position:relative;z-index:2}
+  .ct-grid{display:grid;grid-template-columns:1fr minmax(0,620px);gap:clamp(28px,5vw,80px);align-items:start}
+  .ct-l{position:sticky;top:90px}.ct-l h2{font-size:clamp(40px,5.6vw,80px)}
+  .offices{display:grid;gap:18px;margin-top:34px;border-top:1px solid var(--line);padding-top:24px}
+  .offices div{display:flex;flex-direction:column;gap:2px;font-size:16px}
+  .offices span{font:500 11px 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+  .offices a{color:var(--ink);width:max-content;border-bottom:1px solid rgba(77,163,255,.4)}.offices a:hover{color:var(--accent)}
+  .ct-r{position:relative;border-radius:30px;padding:2px;background:conic-gradient(from var(--ang,0deg),#00498a,#4da3ff,#9ccbff,#1f7fe0,#00498a);animation:spin 9s linear infinite}
+  @property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+  @keyframes spin{to{--ang:360deg}}
+  .ct-r>form,.ct-r>.cf-ok{background:linear-gradient(170deg,#0b1626,#070f1c);border-radius:28px;padding:clamp(22px,3.2vw,38px);position:relative;display:block}
+  .cf-prog{position:relative;display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;max-width:220px}
+  .cf-prog:before{content:"";position:absolute;left:14px;right:14px;top:50%;height:2px;background:rgba(255,255,255,.1);transform:translateY(-50%)}
+  .cf-prog i{position:absolute;left:14px;top:50%;height:2px;width:0;background:var(--accent);transform:translateY(-50%);transition:width .5s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 10px var(--accent)}
+  .cf-prog span{position:relative;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:600 13px Inter,sans-serif;background:#0b1626;border:2px solid rgba(255,255,255,.15);color:var(--dim);transition:.35s}
+  .cf-prog span.on{border-color:var(--accent);color:#fff;background:var(--brand)}
+  .cf-step{display:none;animation:stepIn .5s cubic-bezier(.2,.8,.2,1)}.cf-step.on{display:block}
+  @keyframes stepIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+  .cf-step h3{margin:0;font-size:clamp(26px,3vw,34px);letter-spacing:-.03em}.cf-sub{color:var(--dim);margin:6px 0 20px;font-size:15px;min-height:1.4em}
+  .opts{display:grid;gap:10px}
+  .opt input,.area input,.quals input{position:absolute;opacity:0;pointer-events:none}
+  .ob{display:grid;grid-template-columns:46px 1fr;grid-template-rows:auto auto;column-gap:14px;align-items:center;padding:14px 16px;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;transition:.25s}
+  .ob b{font-size:16.5px;letter-spacing:-.01em;grid-column:2}.ob>span:not(.oi){grid-column:2;font-size:13.5px;color:var(--dim)}
+  .oi{grid-row:1/3;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:rgba(77,163,255,.1);border:1px solid rgba(77,163,255,.3);transition:.25s}
+  .ob:hover{border-color:rgba(77,163,255,.6);background:rgba(77,163,255,.06);transform:translateX(3px)}
+  .opt input:checked+.ob{border-color:var(--accent);background:linear-gradient(90deg,rgba(0,73,138,.55),rgba(0,73,138,.15));box-shadow:0 0 0 1px var(--accent),0 12px 34px -14px rgba(30,120,230,.8)}
+  .opt input:checked+.ob .oi{background:var(--brand);border-color:#4da3ff}.opt input:checked+.ob .oi svg{stroke:#fff}
+  .opt input:focus-visible+.ob,.area input:focus-visible+span,.quals input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}
+  .areas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+  .area span{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 14px 16px;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;transition:.25s;position:relative;overflow:hidden;height:100%}
+  .area b{font-size:clamp(15px,1.6vw,18px);letter-spacing:-.02em}.area i{font:500 11px 'JetBrains Mono',monospace;font-style:normal;color:var(--dim)}
+  .area .bar{display:block;height:5px;border-radius:9px;margin-top:12px;background:rgba(255,255,255,.08);position:relative;width:100%}
+  .area .bar:after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);border-radius:9px;background:linear-gradient(90deg,#00498a,#4da3ff);transition:.4s}
+  .area:hover span{border-color:rgba(77,163,255,.6)}
+  .area input:checked+span{border-color:var(--accent);background:rgba(0,73,138,.4);box-shadow:0 0 0 1px var(--accent)}
+  .fld{position:relative;margin-bottom:14px}
+  .fld input,.fld textarea{width:100%;font:500 16px Inter,sans-serif;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:22px 14px 8px;outline:0;transition:.2s;resize:vertical}
+  .fld label{position:absolute;left:15px;top:15px;font:400 15.5px Inter,sans-serif;color:var(--dim);pointer-events:none;transition:.2s;transform-origin:left top}
+  .fld input:focus,.fld textarea:focus{border-color:var(--accent);background:rgba(77,163,255,.07);box-shadow:0 0 0 3px rgba(77,163,255,.18)}
+  .fld input:focus+label,.fld input:not(:placeholder-shown)+label,.fld textarea:focus+label,.fld textarea:not(:placeholder-shown)+label{transform:translateY(-9px) scale(.74);color:var(--accent)}
+  .fld.bad input,.fld.bad textarea{border-color:#ff6a6a;box-shadow:0 0 0 3px rgba(255,80,80,.15)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .usechips{display:flex;flex-wrap:wrap;gap:7px;margin:-4px 0 16px}.usechips button{font:500 12.5px Inter,sans-serif;color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:99px;padding:6px 12px;cursor:pointer;transition:.2s}.usechips button:hover{border-color:var(--accent);background:rgba(77,163,255,.12)}
+  .quals{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}.quals span{display:inline-block;padding:10px 15px;border-radius:99px;border:1px solid var(--line);background:rgba(255,255,255,.04);font:600 13.5px Inter,sans-serif;cursor:pointer;transition:.2s}
+  .quals span:hover{border-color:rgba(77,163,255,.6)}.quals input:checked+span{background:var(--brand);border-color:#4da3ff}
+  .quals.bad span{border-color:#ff6a6a}
+  .chk{display:flex;gap:12px;align-items:flex-start;margin:4px 0 10px;cursor:pointer}
+  .chk input{position:absolute;opacity:0}.chk span{flex:none;width:22px;height:22px;border-radius:7px;border:1.5px solid rgba(255,255,255,.3);margin-top:1px;display:grid;place-items:center;transition:.2s}
+  .chk input:checked+span{background:var(--brand);border-color:#4da3ff}.chk input:checked+span:after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+  .chk input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}.chk.bad span{border-color:#ff6a6a}
+  .chk em{font-style:normal;font-size:12.5px;line-height:1.45;color:#aeb8c6}.chk em a{color:var(--accent);text-decoration:underline}
+  .cf-err{min-height:1.3em;color:#ff8d8d;font-size:14px;margin:6px 0 4px}
+  .cf-nav{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:8px}.cf-nav .btn{cursor:pointer}.cf-nav .btn[hidden]{display:none}
+  #cfSend.sending{opacity:.7;pointer-events:none}
+  .cf-fine{font-size:12.5px;color:var(--dim);margin:14px 0 0}.cf-fine a{color:var(--accent)}
+  .cf-ok{text-align:center;padding-top:clamp(40px,6vw,70px)!important;padding-bottom:clamp(40px,6vw,70px)!important}
+  .cf-ok[hidden],.ct-r>form[hidden]{display:none}
+  .cf-ok svg{width:96px;height:96px;fill:none;stroke:#34d399;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .cf-ok circle{stroke-dasharray:215;stroke-dashoffset:215;animation:dash .9s ease forwards}.cf-ok path{stroke-dasharray:60;stroke-dashoffset:60;animation:dash .6s ease .7s forwards}
+  @keyframes dash{to{stroke-dashoffset:0}}
+  .cf-ok h3{font-size:34px;letter-spacing:-.03em;margin:18px 0 6px}.cf-ok p{color:#b6c0cd;max-width:24em;margin:0 auto 14px}
+  @media(max-width:1000px){.ct-grid{grid-template-columns:1fr}.ct-l{position:static}.ct-l .offices{display:none}.ct-l .lead{margin-bottom:6px}}
+  @media(max-width:560px){.two{grid-template-columns:1fr}.areas{grid-template-columns:1fr}.area span{flex-direction:row;align-items:center;gap:8px;height:auto}.area .bar{display:none}.cf-nav{flex-wrap:wrap}.cf-nav .btn{flex:1}.ob{padding:12px}}
+  @media(prefers-reduced-motion:reduce){.ct-r{animation:none}}
+  @media(min-width:901px){.card{max-height:calc(100svh - 128px);overflow-y:auto;scrollbar-width:thin}}
   .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
   #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
@@ -364,25 +447,26 @@
 <div id="splash" aria-hidden="true"><div class="sp-in"><svg viewBox="0 0 400 345" width="132" height="114" fill="#fff"><path class="sb" style="--i:0" d="M17 0H140L200 47L260 0H383V75H260L200 107L140 75H17Z"/><path class="sb" style="--i:1" d="M17 84H140L200 116L260 84H383V159H260L200 191L140 159H17Z"/><path class="sb" style="--i:2" d="M17 168H140L200 200L260 168H383V243H260L200 275L140 243H17Z"/><path class="sb" style="--i:3" d="M17 252H140L200 284L260 252H383V327H260L200 343L140 327H17Z"/></svg><div class="sw"><b>MANINI</b><i>PREFABBRICATI</i></div></div></div>
 <canvas id="gl"></canvas><div id="nogl"></div><div id="labels"></div>
 
-<header class="bar"><a class="brand" href="#top" aria-label="Manini Prefabbricati"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#smart">Smart</a><a href="#sostenibilita">Sostenibilità</a><a href="#mappa">Realizzazioni</a><a class="go" href="#contatti">Contatti</a></nav><button class="burger" id="burger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button></header>
+<header class="bar"><a class="brand" href="#top" aria-label="Manini Prefabbricati"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#smart">Smart</a><a href="#sostenibilita">Sostenibilità</a><a href="#service">Service</a><a href="#mappa">Realizzazioni</a><a class="go" href="#contatti">Contatti</a></nav><button class="burger" id="burger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button></header>
 <div id="menu" aria-hidden="true">
   <div class="mn-in">
     <div class="mn-h">Vai a</div>
     <a href="#top" data-m>Inizio</a>
     <div class="mn-g">Sistemi</div>
-    <div class="mn-sub"><a href="#" data-b="1">Ondal</a><a href="#" data-b="2">Ondal+</a><a href="#" data-b="3">TAU</a><a href="#" data-b="4">Manini Plan</a><a href="#" data-b="5">Solai</a><a href="#" data-b="6">Tutti i tetti</a></div>
+    <div class="mn-sub"><a href="#" data-b="1">Ondal</a><a href="#" data-b="2">Ondal+</a><a href="#" data-b="3">Ondal New</a><a href="#" data-b="4">TAU</a><a href="#" data-b="5">Manini Plan</a><a href="#" data-b="6">Solai</a><a href="#" data-b="7">Tutti i tetti</a></div>
     <a href="#perche" data-m>Perché Manini</a>
     <a href="#sicurezza" data-m>Sicurezza sismica</a>
     <a href="#connect" data-m>Manini Connect</a>
     <a href="#smart" data-m>Smart Manufacturing e Control Room</a>
     <a href="#verde" data-m>Tetto verde e fotovoltaico</a>
     <a href="#sostenibilita" data-m>Sostenibilità</a>
+    <a href="#service" data-m>Manini Service</a>
     <a href="#mappa" data-m>Mappa delle realizzazioni</a>
     <a href="#referenze" data-m>Clienti</a>
     <a href="#contatti" data-m class="cta">Contatti</a>
   </div>
 </div>
-<nav id="systabs" aria-label="Sistemi"><button data-b="1">Ondal</button><button data-b="2">Ondal+</button><button data-b="3">TAU</button><button data-b="4">Manini Plan</button><button data-b="5">Solai</button><button data-b="6">Tutti i tetti</button></nav>
+<nav id="systabs" aria-label="Sistemi"><button data-b="1">Ondal</button><button data-b="2">Ondal+</button><button data-b="3">Ondal New</button><button data-b="4">TAU</button><button data-b="5">Manini Plan</button><button data-b="6">Solai</button><button data-b="7">Tutti i tetti</button></nav>
 
 <main>
 <!-- HERO -->
@@ -405,6 +489,7 @@
     <p class="lead" style="font-size:16px">Progettata, prodotta e impermeabilizzata in fabbrica. Piana o a shed, anche insieme sullo stesso tetto. Clicca le etichette sul modello per approfondire.</p>
     <ul class="chips"><li><b>5,00–7,50 m</b> interasse tegoli</li><li><b>R60–R180</b> al fuoco</li><li>Acqua su <b>2 direzioni</b></li></ul>
     <div class="ctl">
+      <div class="seg" id="capT"><button class="on" data-c="shed">Cappella shed</button><button data-c="curve">Cappella curva</button></div>
       <label class="row"><button class="mini" id="snP" type="button" aria-label="Pausa o avvia il sole">⏸</button>Sole<input id="snT" type="range" min="7" max="19" step=".05" value="8"><output id="snO">8:00</output></label>
       <div class="meter"><i id="snM"></i></div>
       <div class="status" id="snS">Il sole percorre il cielo: guarda la luce entrare dallo shed.</div>
@@ -429,9 +514,17 @@
     <button class="replay" data-b="2">↻ Rimonta</button>
   </div></div>
   <div class="s3d step" data-beat="3"><div class="card rv">
-    <div class="eyebrow">Sistema 03</div><div class="sysname">TAU</div><div class="syssub">Estradosso parabolico · intradosso piano</div>
+    <div class="eyebrow">Sistema 03</div><div class="sysname">Ondal New</div><div class="syssub">Trave Super-Omega · grandi maglie</div>
+    <h2 class="t">Più leggera. Con fondazioni più piccole.</h2>
+    <p class="lead m-hide" style="font-size:16px">Una variante di Ondal che mantiene i requisiti e le forme dei manufatti portanti, ma risponde a esigenze di progetto diverse. I tegoli si appoggiano alla base della trave, non sopra.</p>
+    <ul class="chips"><li>Trave <b>Super-Omega</b></li><li>Interasse variabile fino a <b>7,50 m</b></li><li>Lucernari <b>a raso</b> o <b>shed</b></li></ul>
+    <div class="ctl"><div class="read"><div><span>Carroponti</span><strong style="font-size:16px">senza vie di corsa</strong></div><div><span>Fissaggi</span><strong style="font-size:16px">antisismici</strong></div></div></div>
+    <button class="replay" data-b="3">↻ Rimonta</button>
+  </div></div>
+  <div class="s3d step" data-beat="4"><div class="card rv">
+    <div class="eyebrow">Sistema 04</div><div class="sysname">TAU</div><div class="syssub">Estradosso parabolico · intradosso piano</div>
     <h2 class="t">Piana e inclinata. Insieme.</h2>
-    <p class="lead m-hide" style="font-size:16px">L'acqua scivola via, il controsoffitto resta piano. Pronta per il fotovoltaico, senza forare l'impermeabilizzazione.</p>
+    <p class="lead m-hide" style="font-size:16px">Travi per luci da 12 a 32 m con estradosso parabolico e intradosso rettilineo. Copre tutto con una cappella curva, con lucernari a raso o shed. Il telaio dei pannelli fotovoltaici si fissa senza forare.</p>
     <ul class="chips"><li>Luci <b>12–32 m</b></li><li>Estradosso <b>80–120 cm</b></li><li>Fotovoltaico <b>facile</b></li></ul>
     <div class="ctl">
       <div class="seg tog" id="tuPv"><button data-p="1">☀ Aggiungi il fotovoltaico</button></div>
@@ -440,41 +533,43 @@
       <div class="read"><div><span>Da smaltire</span><strong id="tuQ">10,7 L/s</strong></div><div><span>Superficie</span><strong>480 m²</strong></div></div>
     </div>
     <p class="fine m-hide">Fotovoltaico: stima a 0,2 kWp per m² di pannello. Portata = pioggia × superficie.</p>
-    <button class="replay" data-b="3">↻ Rimonta</button>
+    <button class="replay" data-b="4">↻ Rimonta</button>
   </div></div>
-  <div class="s3d step" data-beat="4"><div class="card rv">
-    <div class="eyebrow">Sistema 04</div><div class="sysname">Manini Plan</div><div class="syssub">Pilastri · travi precompresse</div>
+  <div class="s3d step" data-beat="5"><div class="card rv">
+    <div class="eyebrow">Sistema 05</div><div class="sysname">Manini Plan</div><div class="syssub">Pilastri · travi precompresse</div>
     <h2 class="t">La struttura che regge tutto.</h2>
     <p class="lead m-hide" style="font-size:16px">Pilastri, travi principali in c.a. precompresso e travi secondarie a T, anch'esse precompresse. Un manto continuo isola e impermeabilizza.</p>
     <ul class="chips"><li>Industria</li><li>Esposizione</li><li>Commercio</li><li>Isolamento <b>su misura</b></li></ul>
     <div class="ctl"><div class="seg tog" id="plEx"><button data-x="0" class="on">Montato</button><button data-x="1">Esploso</button><button data-x="2">Incastro</button></div></div>
-    <button class="replay" data-b="4">↻ Rimonta</button>
+    <button class="replay" data-b="5">↻ Rimonta</button>
   </div></div>
-  <div class="s3d step" data-beat="5"><div class="card rv">
-    <div class="eyebrow">Sistema 05</div><div class="sysname">Solai</div><div class="syssub">Poker · PI-Greco · Pluriman · Solman</div>
+  <div class="s3d step" data-beat="6"><div class="card rv">
+    <div class="eyebrow">Sistema 06</div><div class="sysname">Solai</div><div class="syssub">Poker · PI-Greco · Solman · Pluriman</div>
     <h2 class="t">Un solaio per ogni piano.</h2>
     <div class="ctl">
-      <div class="seg" id="soSel"><button class="on" data-s="0">Poker</button><button data-s="1">PI-Greco</button><button data-s="2">Pluriman</button></div>
+      <div class="seg" id="soSel" style="grid-auto-flow:row;grid-template-columns:repeat(4,1fr)"><button class="on" data-s="0">Poker</button><button data-s="1">PI-Greco</button><button data-s="2">Solman</button><button data-s="3">Pluriman</button></div>
       <label class="row">Spessore<input id="soT" type="range" min="1" max="10" step="1" value="4"><output id="soTo">—</output></label>
       <p class="rinfo" id="soI"></p>
     </div>
-    <button class="replay" data-b="5">↻ Rimonta</button>
+    <button class="replay" data-b="6">↻ Rimonta</button>
   </div></div>
 </section>
 
 <!-- CONFIGURATORE -->
-<section id="config" class="s3d tall" data-beat="6">
+<section id="config" class="s3d tall" data-beat="7">
   <div class="stick"><div class="card" id="cfg">
     <div class="eyebrow">Tutti i tetti</div><div class="sysname sm">Il tuo capannone</div>
     <h2 class="t">Cambia il tetto. Cambia le misure.</h2>
     <div class="ctl">
-      <div class="seg roofs" id="cfRoof"><button class="on" data-r="shed">Ondal shed</button><button data-r="pv">Powershed</button><button data-r="flat">Piano + verde</button><button data-r="tau">TAU</button><button data-r="plan">Plan</button></div>
+      <div class="seg roofs" id="cfRoof"><button class="on" data-r="shed">Ondal shed</button><button data-r="curve">Ondal curva</button><button data-r="new">Ondal New</button><button data-r="pv">Powershed</button><button data-r="flat">Piano + verde</button><button data-r="tau">TAU</button><button data-r="plan">Plan</button></div>
       <p class="rinfo" id="cfInfo"></p>
+      <div class="seg" id="mnT"><button class="on" data-k="lamiera">Lamiera</button><button data-k="inox">Inox</button><button data-k="guaina">Guaina</button><button data-k="tpo">TPO</button></div>
+      <p class="rinfo" id="mnI" style="min-height:0"></p>
       <label class="row">Campate<input id="cfX" type="range" min="1" max="4" step="1" value="2"><output id="cfXo">2 × 20 m</output></label>
       <label class="row">Moduli<input id="cfZ" type="range" min="2" max="8" step="1" value="3"><output id="cfZo">3 × 7,5 m</output></label>
       <label class="row">Altezza<input id="cfH" type="range" min="6" max="12" step="1" value="9"><output id="cfHo">9 m</output></label>
       <div class="read"><div><span>Superficie</span><strong id="cfA">—</strong></div><div><span>Pilastri</span><strong id="cfC">—</strong></div><div><span id="cfNl">Elementi</span><strong id="cfN">—</strong></div><div><span>Altezza libera</span><strong id="cfHh">—</strong></div></div>
-      <a class="btn" href="#contatti" style="text-align:center">Richiedi un preventivo</a>
+      <a class="btn" href="#contatti" data-prefill="Nuova Realizzazione" data-cfg="1" style="text-align:center">Richiedi un preventivo</a>
     </div>
     <p class="fine m-hide">Clicca le etichette sul modello per un approfondimento. Conteggi geometrici di un modulo tipo, non un preventivo.</p>
   </div></div>
@@ -509,7 +604,7 @@
 </section>
 
 <!-- SISMICA -->
-<section id="sicurezza" class="s3d tall" data-beat="7">
+<section id="sicurezza" class="s3d tall" data-beat="8">
   <div class="stick"><div class="card" id="seis">
     <div class="eyebrow">Sicurezza sismica</div><div class="sysname sm">AllDrift®</div><h2 class="t">Quando la terra trema, la trave scorre.</h2>
     <p class="lead m-hide" style="font-size:16px">Due file di pilastri si muovono in modo diverso. Con un collegamento rigido la trave si spezza. Con AllDrift® scorre su blocchi in PTFE e snodi a cerniera.</p>
@@ -526,7 +621,7 @@
 </section>
 
 <!-- CONNECT -->
-<section id="connect" class="s3d tall" data-beat="8">
+<section id="connect" class="s3d tall" data-beat="9">
   <div class="stick"><div class="card" id="conn">
     <div class="eyebrow">Monitoraggio</div><div class="sysname sm">Manini Connect</div><h2 class="t">Il pilastro che ti avvisa.</h2>
     <p class="lead m-hide" style="font-size:16px">Sensori integrati nei pilastri già in produzione. I dati arrivano via cloud alla Control Room Manini, e gli algoritmi segnalano subito ogni anomalia.</p>
@@ -581,7 +676,7 @@
 </section>
 
 <!-- VERDE -->
-<section id="verde" class="s3d tall" data-beat="9">
+<section id="verde" class="s3d tall" data-beat="10">
   <div class="stick"><div class="card">
     <div class="eyebrow">Sostenibilità</div><div class="sysname sm">Powershed® · Tetto verde</div><h2 class="t">Il tetto che lavora per te.</h2>
     <p class="lead m-hide" style="font-size:16px">Fotovoltaico fissato senza forare l'impermeabilizzazione. Tetti verdi che trattengono l'acqua e raffrescano. Un sito carbon free, compensato. Manini è socia del Green Building Council Italia.</p>
@@ -606,6 +701,22 @@
       <div class="sc rv"><div class="tag2">Carbon Footprint Calculator</div><h3>Misurare per ridurre.</h3><p>Un software sviluppato dai tecnici Manini stima la CO₂ legata a un edificio nel luogo dove sorge. Poi la forestazione urbana la compensa, in tutto o in parte.</p></div>
       <div class="sc w rv"><div class="tag2">GFRP</div><h3>Barre in fibra di vetro, al posto dell’acciaio.</h3><p>Non si corrodono con umidità e salsedine, pesano meno dell’acciaio B450C e riducono le emissioni del trasporto. La prima applicazione europea è un ponte a Gonnesa, in Sardegna, con le università di Cagliari e Miami.</p></div>
       <div class="sc w rv"><div class="tag2">Circular Wall</div><h3>Pannelli isolati con PET riciclato.</h3><p>Al posto del polistirolo espanso, il pannello usa PET riciclato, soprattutto da bottiglie di plastica. Manini punta a dimezzare l’impatto ambientale rispetto a un pannello tradizionale. Il progetto è tra le buone pratiche di economia circolare della Camera di Commercio dell’Umbria.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- MANINI SERVICE -->
+<section id="service" class="solid svc">
+  <div class="wrap">
+    <div class="svc-hd"><div><div class="eyebrow rv">Manini Service</div>
+      <h2 class="rv">Hai già un capannone?<br>Lo rimettiamo in forma.</h2></div>
+      <p class="lead rv" style="max-width:26em">Dalla verifica sismica alla copertura nuova, fino al fotovoltaico. Cinque interventi sull’esistente, anche senza fermare la produzione.</p></div>
+    <div class="svc-grid">
+      <button class="svc-c rv" data-prefill="Adeguamento Sismico"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6z"/><path d="M8 12h2l1.5-3 2 6 1.5-3h1"/></svg></span><b>Adeguamento sismico</b><span>AllDrift® e Jawfix® per collegare e mettere in sicurezza.</span><i>Richiedi ›</i></button>
+      <button class="svc-c rv" data-prefill="Rifacimento/Sostituzione copertura industriale e Efficientamento Energetico"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12l9-7 9 7"/><path d="M5 11v9h14v-9"/><path d="M10 20v-5h4v5"/></svg></span><b>Coperture ed efficienza</b><span>Sostituzione della copertura e riqualificazione energetica.</span><i>Richiedi ›</i></button>
+      <button class="svc-c rv" data-prefill="Energy Provider e Fotovoltaico"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><b>Energy e fotovoltaico</b><span>Impianto sul tetto, anche insieme al rifacimento della copertura.</span><i>Richiedi ›</i></button>
+      <button class="svc-c rv" data-prefill="Manutenzione Ordinaria e/o Straordinaria"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 00-5 5L3 18l3 3 6.5-6.5a4 4 0 005-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg></span><b>Manutenzione</b><span>Ordinaria e straordinaria su strutture e coperture.</span><i>Richiedi ›</i></button>
+      <button class="svc-c rv" data-prefill="Manutenzione Ordinaria e/o Straordinaria" data-note="Interesse: monitoraggio con Manini Connect su edificio esistente."><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h3l2-6 3 12 3-9 2 5 2-2h5"/></svg></span><b>Monitoraggio</b><span>Manini Connect si installa anche su edifici già costruiti.</span><i>Richiedi ›</i></button>
     </div>
   </div>
 </section>
@@ -642,12 +753,50 @@
   </div>
 </section>
 
-<section class="final" id="contatti">
-  <img class="rv" src="assets/manini-mark-white.svg" alt="Manini" width="64" height="55" style="margin:0 auto 28px;display:block">
-  <div class="eyebrow rv">Il nuovo capannone</div>
-  <h2 class="rv">Prefabbrichiamo<br>il futuro. Insieme.</h2>
-  <p class="lead rv" style="max-width:30em;margin:0 auto 30px">Racconta ai tecnici Manini cosa vuoi costruire, o riqualificare.</p>
-  <a class="btn rv" href="https://www.manini.it/contatti/" target="_blank" rel="noopener">Contatta Manini</a>
+<section class="contact" id="contatti">
+  <div class="wrap ct-grid">
+    <div class="ct-l">
+      <img class="rv" src="assets/manini-mark-white.svg" alt="Manini" width="52" height="45" style="display:block;margin-bottom:22px">
+      <div class="eyebrow rv">Il nuovo capannone</div>
+      <h2 class="rv">Raccontaci<br>il tuo progetto.</h2>
+      <p class="lead rv" style="max-width:24em">Tre domande, un minuto. Una nuova costruzione o un intervento su un edificio esistente: i tecnici Manini leggono la tua richiesta e ti ricontattano.</p>
+      <div class="offices rv">
+        <div><span>Sede · S. Maria degli Angeli (PG)</span><a href="tel:+390758041018">+39 075 80 41 018</a><a href="mailto:com@manini.it">com@manini.it</a></div>
+        <div><span>Lazio · Aprilia (LT)</span><a href="tel:+390692717750">+39 06 92 71 750</a></div>
+        <div><span>Lombardia · MC-Manini, Somaglia (LO)</span><a href="tel:+390377449226">+39 0377 449 226</a><a href="mailto:info@mc-manini.it">info@mc-manini.it</a></div>
+      </div>
+    </div>
+    <div class="ct-r rv">
+      <form id="cform" novalidate autocomplete="on">
+        <div class="cf-prog" aria-hidden="true"><i id="cfBar"></i><span class="on">1</span><span>2</span><span>3</span></div>
+        <div class="cf-step on" data-s="1"><h3>Cosa ti serve?</h3><p class="cf-sub">Scegli il tipo di intervento.</p><div class="opts" role="radiogroup" aria-label="Tipo di intervento"><label class="opt"><input type="radio" name="intervention" value="Nuova Realizzazione" required><span class="ob"><span class="oi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V10l6 3V10l6 3V5h4v16z"/><path d="M3 21h18"/></svg></span><b>Nuova realizzazione</b><span>Un capannone, una copertura, un edificio nuovo.</span></span></label><label class="opt"><input type="radio" name="intervention" value="Adeguamento Sismico" required><span class="ob"><span class="oi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6z"/><path d="M8 12h2l1.5-3 2 6 1.5-3h1"/></svg></span><b>Adeguamento sismico</b><span>Mettere in sicurezza un edificio esistente.</span></span></label><label class="opt"><input type="radio" name="intervention" value="Rifacimento/Sostituzione copertura industriale e Efficientamento Energetico" required><span class="ob"><span class="oi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12l9-7 9 7"/><path d="M5 11v9h14v-9"/><path d="M10 20v-5h4v5"/></svg></span><b>Copertura ed efficientamento</b><span>Rifare o sostituire la copertura, risparmiare energia.</span></span></label><label class="opt"><input type="radio" name="intervention" value="Energy Provider e Fotovoltaico" required><span class="ob"><span class="oi"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><b>Energy e fotovoltaico</b><span>Produrre energia dal tetto.</span></span></label><label class="opt"><input type="radio" name="intervention" value="Manutenzione Ordinaria e/o Straordinaria" required><span class="ob"><span class="oi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 00-5 5L3 18l3 3 6.5-6.5a4 4 0 005-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg></span><b>Manutenzione</b><span>Controlli e interventi su strutture e coperture.</span></span></label></div></div>
+        <div class="cf-step" data-s="2"><h3>Com’è fatto?</h3><p class="cf-sub">Dimensione, uso e luogo.</p>
+          <div class="areas" role="radiogroup" aria-label="Area in metri quadri">
+            <label class="area"><input type="radio" name="build-mq" value="&lt;1000 mq"><span><b>&lt; 1.000</b><i>m²</i><em class="bar" style="--w:22%"></em></span></label>
+            <label class="area"><input type="radio" name="build-mq" value="1000&lt;3000 mq"><span><b>1.000 – 3.000</b><i>m²</i><em class="bar" style="--w:55%"></em></span></label>
+            <label class="area"><input type="radio" name="build-mq" value="&gt;3000 mq"><span><b>&gt; 3.000</b><i>m²</i><em class="bar" style="--w:100%"></em></span></label>
+          </div>
+          <div class="fld"><input id="f-use" name="use" type="text" placeholder=" " autocomplete="off" maxlength="200"><label for="f-use">Destinazione d’uso</label></div>
+          <div class="usechips" id="usechips"><button type="button">Produzione</button><button type="button">Logistica</button><button type="button">Commerciale</button><button type="button">Alimentare</button><button type="button">Uffici</button></div>
+          <div class="fld"><input id="f-town" name="town" type="text" placeholder=" " autocomplete="address-level2" maxlength="200"><label for="f-town">Città, provincia della realizzazione</label></div>
+        </div>
+        <div class="cf-step" data-s="3"><h3>E tu, chi sei?</h3><p class="cf-sub" id="cfRecap"></p>
+          <div class="quals" role="radiogroup" aria-label="Qualifica"><label><input type="radio" name="qualification" value="Studio Tecnico"><span>Studio tecnico</span></label><label><input type="radio" name="qualification" value="Ufficio Acquisti"><span>Ufficio acquisti</span></label><label><input type="radio" name="qualification" value="Responsabile Azienda"><span>Responsabile azienda</span></label></div>
+          <div class="two"><div class="fld"><input id="f-name" name="your-name" type="text" placeholder=" " autocomplete="name" maxlength="200"><label for="f-name">Nome e cognome</label></div><div class="fld"><input id="f-co" name="your-company" type="text" placeholder=" " autocomplete="organization" maxlength="200"><label for="f-co">Azienda</label></div></div>
+          <div class="two"><div class="fld"><input id="f-mail" name="email" type="email" placeholder=" " autocomplete="email" maxlength="200"><label for="f-mail">Email</label></div><div class="fld"><input id="f-tel" name="tel" type="tel" placeholder=" " autocomplete="tel" maxlength="60"><label for="f-tel">Telefono</label></div></div>
+          <div class="fld"><input id="f-area" name="your-area" type="text" placeholder=" " autocomplete="off" maxlength="200"><label for="f-area">Settore produttivo</label></div>
+          <div class="fld"><textarea id="f-msg" name="your-message" rows="3" placeholder=" " maxlength="2000"></textarea><label for="f-msg">Note aggiuntive (facoltative)</label></div>
+          <label class="chk"><input type="checkbox" name="privacy" value="1"><span></span><em>Acconsento al trattamento dei miei dati per finalità informative e di marketing, anche con trasferimento a terze parti, come da <a href="https://www.iubenda.com/privacy-policy/53914366" target="_blank" rel="noopener">informativa privacy di Manini</a>. Posso chiedere la cancellazione in ogni momento.</em></label>
+          <label class="chk"><input type="checkbox" name="callback" value="1"><span></span><em>Desidero essere contattato da un commerciale per ulteriori informazioni.</em></label>
+          <input type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0">
+        </div>
+        <div class="cf-err" id="cfErr" role="alert" aria-live="assertive"></div>
+        <div class="cf-nav"><button type="button" class="btn ghost" id="cfBack" hidden>‹ Indietro</button><button type="button" class="btn" id="cfNext">Avanti</button><button type="submit" class="btn" id="cfSend" hidden>Invia la richiesta</button></div>
+        <p class="cf-fine">Preferisci chiamare? <a href="tel:+390758041018">+39 075 80 41 018</a>. Allegati? Scrivi a <a href="mailto:com@manini.it">com@manini.it</a>: puoi inviare disegni e documenti in risposta.</p>
+      </form>
+      <div class="cf-ok" id="cfOk" hidden tabindex="-1"><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34"/><path d="M24 41l11 11 21-24"/></svg><h3>Richiesta inviata.</h3><p>Grazie. I tecnici Manini leggeranno la tua richiesta e ti ricontatteranno.</p><button type="button" class="btn ghost" id="cfAgain">Invia un’altra richiesta</button></div>
+    </div>
+  </div>
 </section>
 </main>
 
