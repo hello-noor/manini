@@ -84,7 +84,7 @@
   /* opaque sections */
   .solid{background:var(--bg);position:relative;padding:clamp(80px,12vw,160px) clamp(20px,6vw,80px)}
   .wrap{max-width:1180px;margin:0 auto}
-  .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:26px;overflow:hidden;margin-top:56px}
+  .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:26px;overflow:hidden;margin-top:56px}
   .nums div{background:var(--solid);padding:38px 30px}
   .nums strong{display:block;font-size:clamp(44px,5.4vw,74px);letter-spacing:-.04em;line-height:1;font-weight:800}
   .nums span{color:var(--dim);font-size:15px}
@@ -94,7 +94,12 @@
   .bx h3{font-size:24px;letter-spacing:-.02em;margin:.5em 0 .3em;line-height:1.15}
   .bx p{color:var(--dim);font-size:15.5px;margin:0}
   .bx .big{font-size:clamp(54px,6vw,84px);font-weight:800;letter-spacing:-.045em;line-height:1;background:linear-gradient(180deg,#fff,#7b7d84);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .kpis{display:flex;gap:clamp(18px,3vw,44px);flex-wrap:wrap;margin:18px 0 22px}
+  .kpis b{display:block;font-size:clamp(26px,3vw,42px);letter-spacing:-.035em;line-height:1.05;font-weight:800}
+  .kpis span{font-size:13px;color:var(--dim)}
+  .bx .big.s{font-size:clamp(34px,3.8vw,54px)}
   .bx:hover{border-color:rgba(77,163,255,.5)}
+  @media(max-width:700px){.nums{grid-template-columns:repeat(2,1fr)}.nums div{padding:24px 18px}}
   @media(max-width:900px){.bento{grid-template-columns:1fr}.bx,.bx.w,.bx.xl{grid-column:auto;min-height:0}}
   .logos{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:26px;overflow:hidden;margin-top:48px}
   .lg{background:var(--solid);height:128px;display:flex;align-items:center;justify-content:center;padding:20px;transition:background .3s}
@@ -141,12 +146,29 @@
     #systabs{top:58px}#systabs button{padding:7px 11px;font-size:12px}
     .tag{font-size:10.5px;padding:5px 8px 5px 19px}.tag.open{width:230px}
   }
+
+  #splash{position:fixed;inset:0;z-index:100;background:radial-gradient(ellipse 60% 50% at 50% 50%,#0a1c33,#050b14 70%);display:flex;align-items:center;justify-content:center;transition:opacity .7s ease,transform .9s cubic-bezier(.2,.7,.2,1)}
+  #splash.out{opacity:0;transform:scale(1.06);pointer-events:none}
+  .sp-in{display:flex;flex-direction:column;align-items:center;gap:26px}
+  .sb{opacity:0;transform-box:fill-box;transform-origin:center;animation:bandIn .55s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i)*.13s + .15s)}
+  .sb:nth-child(odd){--dx:-90px}.sb:nth-child(even){--dx:90px}
+  @keyframes bandIn{from{opacity:0;transform:translateX(var(--dx)) scaleX(.6)}to{opacity:1;transform:none}}
+  #splash svg{filter:drop-shadow(0 10px 40px rgba(0,73,138,.9))}
+  .sw{text-align:center;opacity:0;animation:swIn .8s ease forwards;animation-delay:.85s}
+  .sw b{display:block;font-weight:800;font-size:26px;letter-spacing:.34em;margin-right:-.34em}
+  .sw i{display:block;font:500 10px 'JetBrains Mono',monospace;font-style:normal;letter-spacing:.5em;color:var(--dim);margin-top:8px;margin-right:-.5em}
+  @keyframes swIn{from{opacity:0;letter-spacing:.9em}to{opacity:1}}
+  .hero .in{opacity:0;transform:translateY(26px)}
+  body.ready .hero .in{animation:rise 1s cubic-bezier(.2,.7,.2,1) .05s forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){#splash{display:none}.hero .in{opacity:1;transform:none}.sb,.sw{animation:none;opacity:1}}
   .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
   #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="sp-in"><svg viewBox="0 0 400 345" width="132" height="114" fill="#fff"><path class="sb" style="--i:0" d="M17 0H140L200 47L260 0H383V75H260L200 107L140 75H17Z"/><path class="sb" style="--i:1" d="M17 84H140L200 116L260 84H383V159H260L200 191L140 159H17Z"/><path class="sb" style="--i:2" d="M17 168H140L200 200L260 168H383V243H260L200 275L140 243H17Z"/><path class="sb" style="--i:3" d="M17 252H140L200 284L260 252H383V327H260L200 343L140 327H17Z"/></svg><div class="sw"><b>MANINI</b><i>PREFABBRICATI</i></div></div></div>
 <canvas id="gl"></canvas><div id="nogl"></div><div id="labels"></div>
 
 <header class="bar"><a class="brand" href="#top" aria-label="Manini Prefabbricati"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#connect">Connect</a><a href="#verde">Sostenibilità</a><a class="go" href="#contatti">Contatti</a></nav></header>
@@ -193,18 +215,21 @@
       <div class="status" id="snS2">Il sole percorre il cielo sulle grandi luci.</div>
       <div class="read"><div><span>Pilastri</span><strong id="mgC">32</strong></div><div><span>Rispetto a 12 m</span><strong id="mgD">−56%</strong></div></div>
     </div>
-    <p class="fine m-hide">Esempio: capannone 96 × 48 m, interasse 7,5 m. Conteggio geometrico.</p>
+    <p class="fine" id="mgN"></p>
     <button class="replay" data-b="2">↻ Rimonta</button>
   </div></div>
   <div class="s3d step" data-beat="3"><div class="card rv">
     <div class="eyebrow">Sistema 03</div><div class="sysname">TAU</div><div class="syssub">Estradosso parabolico · intradosso piano</div>
     <h2 class="t">Piana e inclinata. Insieme.</h2>
     <p class="lead m-hide" style="font-size:16px">L'acqua scivola via, il controsoffitto resta piano. Pronta per il fotovoltaico, senza forare l'impermeabilizzazione.</p>
-    <ul class="chips"><li>Luci <b>12–32 m</b></li><li>Estradosso <b>80–120 cm</b></li><li>Lucernari o shed</li></ul>
+    <ul class="chips"><li>Luci <b>12–32 m</b></li><li>Estradosso <b>80–120 cm</b></li><li>Fotovoltaico <b>facile</b></li></ul>
     <div class="ctl">
+      <div class="seg tog" id="tuPv"><button data-p="1">☀ Aggiungi il fotovoltaico</button></div>
+      <div class="read"><div><span>Fotovoltaico</span><strong id="tuP">—</strong></div><div><span>Fissaggio</span><strong style="font-size:16px">senza forare</strong></div></div>
       <label class="row">Pioggia<input id="tuR" type="range" min="10" max="200" step="10" value="80"><output id="tuO">80 mm/h</output></label>
       <div class="read"><div><span>Da smaltire</span><strong id="tuQ">10,7 L/s</strong></div><div><span>Superficie</span><strong>480 m²</strong></div></div>
     </div>
+    <p class="fine m-hide">Fotovoltaico: stima a 0,2 kWp per m² di pannello. Portata = pioggia × superficie.</p>
     <button class="replay" data-b="3">↻ Rimonta</button>
   </div></div>
   <div class="s3d step" data-beat="4"><div class="card rv">
@@ -212,7 +237,7 @@
     <h2 class="t">La struttura che regge tutto.</h2>
     <p class="lead m-hide" style="font-size:16px">Pilastri, travi principali in c.a. precompresso e travi secondarie a T, anch'esse precompresse. Un manto continuo isola e impermeabilizza.</p>
     <ul class="chips"><li>Industria</li><li>Esposizione</li><li>Commercio</li><li>Isolamento <b>su misura</b></li></ul>
-    <div class="ctl"><div class="seg tog" id="plEx"><button data-x="0" class="on">Montato</button><button data-x="1">Esploso</button></div></div>
+    <div class="ctl"><div class="seg tog" id="plEx"><button data-x="0" class="on">Montato</button><button data-x="1">Esploso</button><button data-x="2">Incastro</button></div></div>
     <button class="replay" data-b="4">↻ Rimonta</button>
   </div></div>
   <div class="s3d step" data-beat="5"><div class="card rv">
@@ -220,6 +245,7 @@
     <h2 class="t">Un solaio per ogni piano.</h2>
     <div class="ctl">
       <div class="seg" id="soSel"><button class="on" data-s="0">Poker</button><button data-s="1">PI-Greco</button><button data-s="2">Pluriman</button></div>
+      <label class="row">Spessore<input id="soT" type="range" min="1" max="10" step="1" value="4"><output id="soTo">—</output></label>
       <p class="rinfo" id="soI"></p>
     </div>
     <button class="replay" data-b="5">↻ Rimonta</button>
@@ -259,11 +285,15 @@
       <div><strong data-n="120" data-s=" M€">0</strong><span>di fatturato</span></div>
     </div>
     <div class="bento">
-      <div class="bx xl rv"><div class="eyebrow">Tutto in fabbrica</div><div><h3>Progettata, prodotta e impermeabilizzata prima di arrivare in cantiere.</h3><p>Meno lavorazioni in quota, meno imprevisti, tempi certi. È l'idea alla base di Ondal.</p></div></div>
+      <div class="bx xl rv"><div class="eyebrow">Tutto in fabbrica</div>
+        <div class="kpis"><div><b>4</b><span>stabilimenti</span></div><div><b>230.000 m³</b><span>capacità all'anno</span></div><div><b>5–7,5 m</b><span>interasse tegoli</span></div></div>
+        <div><h3>Progettata, prodotta e impermeabilizzata prima di arrivare in cantiere.</h3><p>Meno lavorazioni in quota, meno imprevisti, tempi certi. È l'idea alla base di Ondal.</p></div></div>
+      <div class="bx rv"><div class="big">64 anni</div><div><h3>Di prefabbricazione</h3><p>Da Assisi, nel 1962. Oggi leader in Italia secondo CERVED e PLIMSOL.</p></div></div>
       <div class="bx rv"><div class="big">24/48h</div><div><h3>Intervento in tutta Italia</h3><p>Manini Service risponde in uno o due giorni.</p></div></div>
       <div class="bx rv"><div class="big">R180</div><div><h3>Fino a R180 al fuoco</h3><p>Da R60 a R180 su richiesta per le coperture Ondal.</p></div></div>
       <div class="bx rv"><div class="big">−70%</div><div><h3>Acqua di deflusso</h3><p>Il tetto verde può ridurre fino al 70% le acque piovane.</p></div></div>
-      <div class="bx w rv"><div class="eyebrow">Antisismica</div><div><h3>AllDrift®, certificata UNI EN 15129.</h3><p>L'unica connessione scorrevole progettata per le strutture prefabbricate, secondo Manini. Provala qui sotto.</p></div></div>
+      <div class="bx w rv"><div class="big s">UNI EN 15129</div><div><h3>AllDrift®, la connessione che scorre.</h3><p>Certificata secondo la norma richiesta dalle NTC 2018: scorrimento su blocchi in PTFE e snodi a cerniera. Provala qui sotto.</p></div></div>
+      <div class="bx w rv"><div class="big s">IoT 2018</div><div><h3>Manini Connect, premiato e brevettato.</h3><p>Premio Internet of Things ai Digital360 Awards 2018. Sensori nei pilastri, dati in tempo reale alla Control Room.</p></div></div>
     </div>
   </div>
 </section>
@@ -303,7 +333,7 @@
   <div class="stick"><div class="card">
     <div class="eyebrow">Sostenibilità</div><div class="sysname sm">Powershed® · Tetto verde</div><h2 class="t">Il tetto che lavora per te.</h2>
     <p class="lead m-hide" style="font-size:16px">Fotovoltaico fissato senza forare l'impermeabilizzazione. Tetti verdi che trattengono l'acqua e raffrescano. Un sito carbon free, compensato. Manini è socia del Green Building Council Italia.</p>
-    <div class="ctl"><button class="btn" id="gnRain">Fai piovere</button><div class="read"><div><span>Deflusso tetto standard</span><strong id="gnA">—</strong></div><div><span>Deflusso tetto verde</span><strong id="gnB">—</strong></div></div><div class="seg tog" id="gnT"><button class="on" data-t="pv">Fotovoltaico</button><button class="on" data-t="green">Tetto verde</button></div></div>
+    <div class="ctl"><button class="btn" id="gnRain">Fai piovere</button><div class="read"><div><span>Senza tetto verde</span><strong id="gnA">—</strong></div><div><span>Con tetto verde</span><strong id="gnB">—</strong></div><div style="grid-column:1/-1"><span>Deflusso di tutto questo tetto</span><strong id="gnC">—</strong></div></div><div class="seg tog" id="gnT"><button class="on" data-t="pv">Fotovoltaico</button><button class="on" data-t="green">Tetto verde</button></div></div>
     <ul class="chips"><li>Ondal <b>Powershed®</b></li><li>Carbon <b>free</b></li><li>GBC <b>Italia</b></li></ul>
   </div></div>
 </section>
@@ -333,6 +363,15 @@
   <p>I numeri sono quelli pubblicati sul sito: alcune pagine riportano valori diversi (ad esempio anni di storia, fatturato e persone). Le capacità produttive sono la somma dei quattro stabilimenti indicati su "Chi siamo".</p>
 </footer>
 
+<script>
+(function(){
+  var sp=document.getElementById('splash'),de=document.documentElement,done=function(){
+    if(window.__splashDone)return; window.__splashDone=true; de.style.overflow=''; document.body.classList.add('ready');
+    if(sp){sp.classList.add('out');setTimeout(function(){sp.remove()},900)} document.dispatchEvent(new Event('splashdone'));};
+  if(!sp||matchMedia('(prefers-reduced-motion: reduce)').matches){done();return}
+  de.style.overflow='hidden'; sp.addEventListener('click',done); setTimeout(done,2100); setTimeout(done,6000);
+})();
+</script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <script type="module" src="./scene.js"></script>
 <script>

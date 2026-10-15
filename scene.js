@@ -73,6 +73,7 @@ const M = {
   grass: new THREE.MeshStandardMaterial({ color: 0x4f8a3a, roughness: 1, bumpMap: bump, bumpScale: 2 }),
   soil: new THREE.MeshStandardMaterial({ color: 0x3b2c20, roughness: 1 }),
   ptfe: new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: .4 }),
+  deck: new THREE.MeshStandardMaterial({ color: 0xdfe2e3, roughness: .5, bumpMap: bump, bumpScale: .2 }),
   membrane: new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: .35, transparent: true, opacity: .45 }),
   glow: new THREE.MeshStandardMaterial({ color: 0x4da3ff, emissive: 0x2f8cff, emissiveIntensity: 2.2, roughness: .4 }),
   rebar: new THREE.MeshStandardMaterial({ color: 0xb4a79a, roughness: .5, metalness: .6 }),
@@ -83,7 +84,7 @@ const M = {
 class Model {
   constructor(ox, oz = 0) {
     this.g = new THREE.Group(); this.g.position.set(ox, 0, oz); scene.add(this.g);
-    this.pieces = []; this.ex = 0; this.exT = 0; this.t = REDUCED ? 1 : 0; this.target = 0; this.speed = .5; this.origin = V3(ox, 0, oz);
+    this.pieces = []; this.ex = 0; this.exT = 0; this.ex2 = 0; this.ex2T = 0; this.det = false; this.t = REDUCED ? 1 : 0; this.target = 0; this.speed = .5; this.origin = V3(ox, 0, oz);
   }
   add(mesh, delay = 0, from = V3(0, 16, 0), parent = this.g, exp = null) {
     if (!mesh.userData.ns) mesh.castShadow = mesh.material !== M.glass; mesh.receiveShadow = true;
@@ -99,12 +100,13 @@ class Model {
   update(dt) {
     const d = this.target - this.t;
     this.t += Math.sign(d) * Math.min(Math.abs(d), dt * this.speed * (d < 0 ? 2.2 : 1));
-    this.ex += (this.exT - this.ex) * Math.min(1, dt * 4);
+    this.ex += (this.exT - this.ex) * Math.min(1, dt * 4); this.ex2 += (this.ex2T - this.ex2) * Math.min(1, dt * 4);
     for (const p of this.pieces) {
       const k = eo(clamp((this.t * 1.5 - p.delay) / .5, 0, 1));
       p.m.position.copy(p.home).addScaledVector(p.off, 1 - k);
       if (p.exp) p.m.position.addScaledVector(p.exp, this.ex);
-      p.m.visible = k > .002;
+      if (p.exp2) p.m.position.addScaledVector(p.exp2, this.ex2);
+      p.m.visible = k > .002 && !(p.hideDet && this.det);
     }
   }
 }
@@ -112,11 +114,12 @@ function box(w, h, d, mat, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); return m;
 }
 // extrude a (u,v) profile along world X, centred, profile u -> world z, v -> world y
-function extrudeX(shape, len, mat) {
+function extrudeXGeo(shape, len) {
   const g = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false, curveSegments: 24 });
   g.rotateY(-Math.PI / 2); g.translate(len / 2, 0, 0);
-  return new THREE.Mesh(g, mat);
+  return g;
 }
+function extrudeX(shape, len, mat) { return new THREE.Mesh(extrudeXGeo(shape, len), mat); }
 const poly = pts => { const s = new THREE.Shape(); pts.forEach(([a, b], i) => i ? s.lineTo(a, b) : s.moveTo(a, b)); s.closePath(); return s; };
 
 /* ---------- Ondal building (shed or flat) ---------- */
@@ -213,42 +216,59 @@ function buildOndal(ox, o = {}) {
 /* ---------- TAU ---------- */
 function buildTau(ox) {
   const m = new Model(ox); m.stage(30);
-  const L = 24, colH = 7, zsB = [-7.5, -2.5, 2.5, 7.5], bw = 1.0;
+  const L = 24, colH = 7, zsB = [-7.5, -2.5, 2.5, 7.5], bw = 1.0, GAP = 5 - bw - .04;
   m.g.userData.center = V3(0, 5, 0);
   m.still(box(L + 6, .3, 24, M.concreteD, 0, -.15, 0));
   const prof = x => .7 + 1.15 * (1 - Math.pow(2 * x / L, 2));
+  const dprof = x => -1.15 * 2 * (2 * x / L) * (2 / L);
   const shape = new THREE.Shape(); shape.moveTo(-L / 2, 0); shape.lineTo(L / 2, 0);
   const N = 40; for (let i = 0; i <= N; i++) { const x = L / 2 - (i / N) * L; shape.lineTo(x, prof(x)); } shape.closePath();
   let n = 0;
-  for (const z of [-7.5, -2.5, 2.5, 7.5]) {
-    for (const x of [-L / 2, L / 2]) m.add(box(1.0, colH, 1.2, M.concrete, x, colH / 2, z), (n++ / 8) * .2, V3(0, 20, 0));
-  }
+  for (const z of zsB) for (const x of [-L / 2, L / 2]) m.add(box(1.0, colH, 1.2, M.concrete, x, colH / 2, z), (n++ / 8) * .2, V3(0, 20, 0));
   n = 0;
   for (const z of zsB) {
     const g = new THREE.ExtrudeGeometry(shape, { depth: bw, bevelEnabled: false, curveSegments: 12 }); g.translate(0, 0, -bw / 2);
-    const b = new THREE.Mesh(g, M.concrete); b.position.set(0, colH, z); m.add(b, .25 + (n++ / 4) * .3, V3(0, 20, 0));
+    const bm = new THREE.Mesh(g, M.concrete); bm.position.set(0, colH, z); m.add(bm, .25 + (n++ / 4) * .3, V3(0, 20, 0));
     m.add(box(1.1, .2, 1.5, M.concreteD, -L / 2, colH - .1, z), .2); m.add(box(1.1, .2, 1.5, M.concreteD, L / 2, colH - .1, z), .2);
   }
-  // secondary purlins + roof sheet between beams (light)
+  // roof deck between the beams: a complete, continuous roof following the parabolic extrados
+  const dk = new THREE.Shape(); for (let q = 0; q <= N; q++) { const x = -L / 2 + q * L / N; q ? dk.lineTo(x, prof(x)) : dk.moveTo(x, prof(x)); }
+  for (let q = N; q >= 0; q--) { const x = -L / 2 + q * L / N; dk.lineTo(x, prof(x) - .18); } dk.closePath();
   for (let i = 0; i < 3; i++) {
-    const z = (zsB[i] + zsB[i + 1]) / 2;
-    for (const x of [-9, -3, 3, 9]) m.add(box(.5, .35, 5 - bw, M.concreteD, x, colH + prof(x) - .17, z), .6 + i * .05);
+    const g = new THREE.ExtrudeGeometry(dk, { depth: GAP, bevelEnabled: false, curveSegments: 1 }); g.translate(0, 0, -GAP / 2);
+    const mesh = new THREE.Mesh(g, M.deck); mesh.position.set(0, colH, (zsB[i] + zsB[i + 1]) / 2); m.add(mesh, .62 + i * .05, V3(0, 20, 0));
   }
-  // rain particles on the parabolic extrados
-  const NP = 70, geo = new THREE.BufferGeometry(), pos = new Float32Array(NP * 3);
+  // rain: falls from the sky, lands on the deck and runs down the parabola to the eaves
+  const NP = 320, geo = new THREE.BufferGeometry(), pos = new Float32Array(NP * 6);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x7fc4ff, size: .22, transparent: true, opacity: .95, depthWrite: false }));
+  const pts = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xa8dcff, transparent: true, opacity: .9 }));
   pts.frustumCulled = false; m.g.add(pts);
-  const drops = Array.from({ length: NP }, () => ({ b: zsB[(Math.random() * 4) | 0], x: (Math.random() * 2 - 1) * L / 2, s: Math.random() < .5 ? -1 : 1, f: -1, v: 0 }));
+  const resp = d => { d.x = (Math.random() * 2 - 1) * L / 2; d.z = zsB[0] + Math.random() * (zsB[3] - zsB[0]); d.y = colH + prof(d.x) + 2 + Math.random() * 22; d.v = 0; d.s = 0; d.dir = d.x < 0 ? -1 : 1; };
+  const drops = Array.from({ length: NP }, () => { const d = {}; resp(d); return d; });
   m.rainN = NP;
   m.rain = dt => {
     drops.forEach((d, i) => {
-      if (d.f >= 0) { d.v += 12 * dt; d.f += d.v * dt; if (d.f > colH + .5) { d.x = (Math.random() * 2 - 1) * 2; d.f = -1; d.s = Math.random() < .5 ? -1 : 1; d.b = zsB[(Math.random() * 4) | 0]; } }
-      else { d.x += d.s * (1.2 + Math.abs(d.x) * .35) * dt * 2.2; if (Math.abs(d.x) > L / 2) { d.x = d.s * L / 2; d.f = 0; d.v = 0; } }
-      const x = d.x, y = d.f >= 0 ? colH + prof(clamp(x, -L / 2, L / 2)) - d.f : colH + prof(x) + .05;
-      pos[i * 3] = x; pos[i * 3 + 1] = i >= m.rainN ? -80 : Math.max(.05, y); pos[i * 3 + 2] = d.b + (Math.random() - .5) * .02 + ((i % 7) - 3) * .06;
+      let len = 1.1;
+      if (d.s === 0) { d.v += 16 * dt; d.y -= d.v * dt; const sf = colH + prof(d.x) + .08; len = 1.1 + Math.min(d.v * .05, .8); if (d.y <= sf) { d.y = sf; d.s = 1; d.v = 0; } }
+      else if (d.s === 1) { d.x += d.dir * (1.8 + Math.abs(d.x) * .45) * dt * 2.2; d.y = colH + prof(clamp(d.x, -L / 2, L / 2)) + .08; len = .35; if (Math.abs(d.x) >= L / 2) { d.s = 2; d.v = 0; } }
+      else { d.v += 14 * dt; d.y -= d.v * dt; len = 1 + Math.min(d.v * .05, .8); if (d.y < 0) resp(d); }
+      const y = i >= m.rainN ? -80 : d.y, dx = d.s === 1 ? -d.dir * len : 0, dy = d.s === 1 ? 0 : len;
+      pos.set([d.x, y, d.z, d.x + dx, y + dy, d.z], i * 6);
     });
     geo.attributes.position.needsUpdate = true;
+  };
+  // photovoltaic option: panels fixed on the deck, no holes in the waterproofing
+  const pvM = new THREE.MeshPhysicalMaterial({ color: 0x14264a, roughness: .22, metalness: .55, clearcoat: 1, clearcoatRoughness: .1, emissive: 0x1f5fd0, emissiveIntensity: .2 });
+  const pvList = [];
+  for (let i = 0; i < 3; i++) for (const kx of [-8, -4, 0, 4, 8]) for (const dz of [-.95, .95]) {
+    const p = box(2.1, .06, 1.7, pvM, kx, 0, (zsB[i] + zsB[i + 1]) / 2 + dz); p.rotation.set(-.12, 0, Math.atan(dprof(kx))); p.castShadow = true; p.visible = false; m.g.add(p);
+    pvList.push({ m: p, y: colH + prof(kx) + .3 });
+  }
+  m.pv = { n: pvList.length, area: pvList.length * 2.1 * 1.7, t: 0, target: 0 };
+  m.pvUpdate = (dt, time) => {
+    const q = m.pv, d = q.target - q.t; q.t += Math.sign(d) * Math.min(Math.abs(d), dt * .7);
+    pvList.forEach((p, i) => { const k = eo(clamp((q.t * 1.7 - i / pvList.length * .7) / .3, 0, 1)); p.m.visible = k > .01; p.m.scale.setScalar(Math.max(k, .001)); p.m.position.y = p.y + (1 - k) * 5; });
+    pvM.emissiveIntensity = .18 + .12 * Math.sin(time * 2.2);
   };
   return m;
 }
@@ -272,34 +292,43 @@ function buildPlan(ox) {
   const T = poly([[-.12, 0], [.12, 0], [.12, .55], [.5, .55], [.5, .8], [-.5, .8], [-.5, .55], [-.12, .55]]);
   const top = H + .5 + 1.2;
   [-4.8, -2.4, 0, 2.4, 4.8].forEach((z, i) => {
-    const t = extrudeX(T, px * 2 - .6, M.concrete); t.position.set(0, top, z); m.add(t, .55 + i * .04, up, m.g, E(9));
+    const t = extrudeX(T, px * 2, M.concrete); t.position.set(0, top, z); m.add(t, .55 + i * .04, up, m.g, E(9)); if (i === 2) m.pieces[m.pieces.length - 1].exp2 = V3(0, 1.5, 0);
   });
-  m.add(box(px * 2 + 1.8, .14, pz * 2 + 1.2, M.membrane, 0, top + .87, 0), .86, V3(0, 16, 0), m.g, E(13));
+  m.add(box(px * 2 + 1.8, .14, pz * 2 + 1.2, M.membrane, 0, top + .87, 0), .86, V3(0, 16, 0), m.g, E(13)); m.pieces[m.pieces.length - 1].hideDet = true;
+  // schematic bearing detail of the secondary T beam on the main beam (shown in 'detail' mode)
+  const det = new THREE.Group(); det.visible = false; m.g.add(det); m.detGroup = det;
+  const padM = new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: .9 }), groutM = new THREE.MeshStandardMaterial({ color: 0xe8e3d6, roughness: .95 });
+  for (const sx of [-1, 1]) {
+    const x = sx * (px - .25);
+    for (const o of [box(.5, .02, .3, M.steel, x, top + .01, 0), box(.46, .045, .26, padM, x, top + .045, 0), box(.5, .1, .1, groutM, x, top + .05, .2), box(.5, .1, .1, groutM, x, top + .05, -.2)]) { o.receiveShadow = true; o.castShadow = true; det.add(o); }
+    for (const dz of [-.065, .065]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .7, 14), M.steel); d.position.set(x, top + .05, dz); d.castShadow = true; det.add(d); }
+  }
   return m;
 }
 
 /* ---------- Solai ---------- */
+const pokerShape = (th, w = 1.2) => {
+  const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(w, 0); sh.lineTo(w, th); sh.lineTo(0, th); sh.closePath();
+  const nH = 5, r = th * .31;
+  for (let i = 0; i < nH; i++) { const p = new THREE.Path(); p.absarc(w / (nH * 2) + i * w / nH, th / 2, r, 0, Math.PI * 2, true); sh.holes.push(p); }
+  return sh;
+};
+const piShape = th => poly([[0, th], [2.5, th], [2.5, th - .12], [2.3, th - .12], [2.3, 0], [2.1, 0], [2.1, th - .12], [.4, th - .12], [.4, 0], [.2, 0], [.2, th - .12], [0, th - .12]]);
 function buildSolai(ox) {
   const m = new Model(ox); m.stage(24);
   m.g.userData.center = V3(0, 1.5, 0);
   m.still(box(22, .3, 16, M.concreteD, 0, -.15, 0));
-  const len = 10, y0 = 1.1;
-  for (const x of [-len / 2 + 1, len / 2 - 1]) { m.add(box(.9, y0, 15, M.concrete, x, y0 / 2, 0), 0, V3(0, 16, 0)); }
-  const poker = (th, w, z, d) => {
-    const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(w, 0); s.lineTo(w, th); s.lineTo(0, th); s.closePath();
-    const nH = 5, r = th * .31;
-    for (let i = 0; i < nH; i++) { const p = new THREE.Path(); p.absarc(w / (nH * 2) + i * w / nH, th / 2, r, 0, Math.PI * 2, true); s.holes.push(p); }
-    const e = extrudeX(s, len, M.concrete); e.position.set(0, y0, z); m.add(e, d, V3(0, 18, 0));
-  };
-  poker(.2, 1.2, -6.8, .2); poker(.32, 1.2, -5.5, .3); poker(.5, 1.2, -4.2, .4);
-  const pg = poly([[0, .5], [2.5, .5], [2.5, .6], [2.3, .6], [2.3, 0], [2.1, 0], [2.1, .6], [.4, .6], [.4, 0], [.2, 0], [.2, .6], [0, .6]]);
-  // PI-Greco: thin top slab with two downstand ribs
-  const pi = poly([[0, .6], [2.5, .6], [2.5, .75], [0, .75]]);
-  const pie = extrudeX(pi, len, M.concrete); pie.position.set(0, y0 - .0, .8); m.add(pie, .5, V3(0, 18, 0));
-  for (const dz of [.35, 2.15]) m.add(box(len, .6, .22, M.concrete, 0, y0 + .3, .8 + dz), .55, V3(0, 18, 0));
-  // Pluriman style: slab + metal deck
-  m.add(box(len, .1, 2.5, M.steel, 0, y0 + .05, 4.3 + 1.25 + 0), .65, V3(0, 18, 0));
-  m.add(box(len, .5, 2.5, M.concrete, 0, y0 + .4, 5.55 + 0), .7, V3(0, 18, 0));
+  const len = 10, y0 = 1.1, up = V3(0, 18, 0);
+  for (const x of [-len / 2 + 1, len / 2 - 1]) m.add(box(.9, y0, 15, M.concrete, x, y0 / 2, 0), 0, V3(0, 16, 0));
+  const pk = (th, z, d) => { const e = extrudeX(pokerShape(th), len, M.concrete); e.position.set(0, y0, z); m.add(e, d, up); return e; };
+  pk(.2, -6.8, .2); const mP = pk(.32, -5.5, .3); pk(.5, -4.2, .4);
+  const mPi = extrudeX(piShape(.6), len, M.concrete); mPi.position.set(0, y0, .8); m.add(mPi, .5, up);
+  m.add(box(len, .1, 2.5, M.steel, 0, y0 + .05, 5.55), .65, up);
+  const mPl = box(len, .65, 2.5, M.concrete, 0, y0 + .1 + .325, 5.55); m.add(mPl, .7, up);
+  const pc = mesh => m.pieces.find(p => p.m === mesh);
+  m.setPoker = th => { mP.geometry.dispose(); mP.geometry = extrudeXGeo(pokerShape(th), len); };
+  m.setPi = th => { mPi.geometry.dispose(); mPi.geometry = extrudeXGeo(piShape(th), len); };
+  m.setPlu = th => { const h = th - .1; mPl.geometry.dispose(); mPl.geometry = new THREE.BoxGeometry(len, h, 2.5); pc(mPl).home.y = y0 + .1 + h / 2; };
   return m;
 }
 
@@ -375,13 +404,14 @@ function buildConnect(ox) {
   m.g.userData.center = V3(7, 6, 0);
   m.still(box(34, .3, 20, M.concreteD, 6, -.15, 0));
   const H = 9;
-  const pill = box(1.2, H, 1.2, M.xray, 0, H / 2, 0); pill.userData.ns = true; pill.renderOrder = 2; m.add(pill, 0, V3(0, 16, 0));
-  for (const [x, z] of [[-.42, -.42], [.42, -.42], [-.42, .42], [.42, .42]]) m.add(box(.07, H - .1, .07, M.rebar, x, H / 2, z), .1, V3(0, 16, 0));
-  m.add(box(5.5, .9, 1.0, M.concrete, 2.7, H + .45, 0), .3, V3(0, 14, 0));
-  m.add(box(8, .3, 8, M.concreteD, 3.2, H + 1.05, 0), .4, V3(0, 14, 0));
-  const tbox = box(1.1, .8, .8, M.steel, 1.2, H + 1.6, 0); m.add(tbox, .55, V3(0, 14, 0));
-  const ant = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, 1.4, 8), M.steel); ant.position.set(1.2, H + 2.7, 0); m.add(ant, .6, V3(0, 14, 0));
-  const sensors = [1.2, 3.2, 5.2, 7.2, 8.6].map((y, i) => { const s = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 12), M.glow.clone()); s.position.set(0, y, 0); s.userData.ns = true; m.add(s, .2 + i * .02, V3(0, 14, 0)); return s; });
+  const sway = new THREE.Group(); m.g.add(sway);
+  const pill = box(1.2, H, 1.2, M.xray, 0, H / 2, 0); pill.userData.ns = true; pill.renderOrder = 2; m.add(pill, 0, V3(0, 16, 0), sway);
+  for (const [x, z] of [[-.42, -.42], [.42, -.42], [-.42, .42], [.42, .42]]) m.add(box(.07, H - .1, .07, M.rebar, x, H / 2, z), .1, V3(0, 16, 0), sway);
+  m.add(box(5.5, .9, 1.0, M.concrete, 2.7, H + .45, 0), .3, V3(0, 14, 0), sway);
+  m.add(box(8, .3, 8, M.concreteD, 3.2, H + 1.05, 0), .4, V3(0, 14, 0), sway);
+  const tbox = box(1.1, .8, .8, M.steel, 1.2, H + 1.6, 0); m.add(tbox, .55, V3(0, 14, 0), sway);
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, 1.4, 8), M.steel); ant.position.set(1.2, H + 2.7, 0); m.add(ant, .6, V3(0, 14, 0), sway);
+  const sensors = [1.2, 3.2, 5.2, 7.2, 8.6].map((y, i) => { const s = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 12), M.glow.clone()); s.position.set(0, y, 0); s.userData.ns = true; m.add(s, .2 + i * .02, V3(0, 14, 0), sway); return s; });
   // cloud + control room
   const cloud = new THREE.Group(); cloud.position.set(9, 15, -3);
   const cm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .5, transparent: true, opacity: .85 });
@@ -396,6 +426,18 @@ function buildConnect(ox) {
   const curve = new THREE.CatmullRomCurve3(path, false, 'catmullrom', .4);
   const NPk = 30, packets = new THREE.InstancedMesh(new THREE.SphereGeometry(.09, 10, 8), new THREE.MeshBasicMaterial({ color: 0x7fc0ff }), NPk);
   packets.frustumCulled = false; m.g.add(packets);
+  // weather + quake effects
+  const NR = 360, rainPos = new Float32Array(NR * 6), rainGeo = new THREE.BufferGeometry();
+  rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+  const rainPts = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color: 0xa8dcff, transparent: true, opacity: 0 }));
+  rainPts.frustumCulled = false; m.g.add(rainPts);
+  const rs = Array.from({ length: NR }, () => ({ x: -7 + Math.random() * 26, z: -9 + Math.random() * 18, y: Math.random() * 24, v: 14 + Math.random() * 8 }));
+  const NW = 70, windPos = new Float32Array(NW * 6), windGeo = new THREE.BufferGeometry();
+  windGeo.setAttribute('position', new THREE.BufferAttribute(windPos, 3));
+  const windL = new THREE.LineSegments(windGeo, new THREE.LineBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0 }));
+  windL.frustumCulled = false; m.g.add(windL);
+  const ws = Array.from({ length: NW }, () => ({ x: -12 + Math.random() * 44, y: 1 + Math.random() * 17, z: -9 + Math.random() * 18, l: 2 + Math.random() * 4, v: 26 + Math.random() * 14 }));
+  const flashL = new THREE.PointLight(0x9fc4ff, 0, 70, 1.2); flashL.position.set(9, 14, -3); m.g.add(flashL);
   const C = { ev: null, t0: 0, lvl: 0, hist: new Array(160).fill(0), flash: 0, alarm: false, ph: 0 };
   C.trigger = e => { C.ev = e; C.t0 = time; C.alarm = false; };
   const dummy = new THREE.Object3D();
@@ -408,6 +450,20 @@ function buildConnect(ox) {
       if (C.ev === 'quake') sig = env * (.9 * Math.sin(el * 38) * Math.sin(el * 5.1) + .2);
       if (C.ev === 'wind') sig = env * (.5 + .35 * Math.sin(el * 2.2) * Math.sin(el * 9));
     }
+    // physical effects of the event
+    const fx = C.ev && el < 7 ? Math.min(1, el / .8) * Math.exp(-Math.max(0, el - 3.5) / 1.4) : 0;
+    const isRain = C.ev === 'rain', isWind = C.ev === 'wind', isQuake = C.ev === 'quake';
+    sway.rotation.z = isWind ? fx * .03 * (Math.sin(el * 2.4) + .6 * Math.sin(el * 5.3)) : isQuake ? fx * .022 * Math.sin(el * 19) : 0;
+    const shk = isQuake ? fx * .22 * Math.sin(el * 33) : 0;
+    m.g.position.set(m.origin.x + shk, 0, m.origin.z + (isQuake ? fx * .12 * Math.cos(el * 27) : 0));
+    rainPts.material.opacity = isRain ? Math.min(1, fx * 1.4) : 0; rainPts.visible = isRain && fx > .01;
+    if (rainPts.visible) { rs.forEach((r, i) => { r.y -= r.v * dt; if (r.y < 0) { r.y = 22 + Math.random() * 4; r.x = -7 + Math.random() * 26; r.z = -9 + Math.random() * 18; } rainPos.set([r.x, r.y, r.z, r.x, r.y + 1.3, r.z], i * 6); }); rainGeo.attributes.position.needsUpdate = true; }
+    C.flash = Math.max(0, C.flash - dt * 5); if (isRain && fx > .3 && Math.random() < dt * 1.1) C.flash = 1;
+    flashL.intensity = C.flash * 6000; cm.emissive.setHex(0xbfd8ff); cm.emissiveIntensity = C.flash * 1.4;
+    cm.color.setRGB(1 - (isRain ? .55 * Math.min(1, fx * 1.5) : 0), 1 - (isRain ? .5 * Math.min(1, fx * 1.5) : 0), 1 - (isRain ? .35 * Math.min(1, fx * 1.5) : 0));
+    windL.material.opacity = isWind ? .55 * Math.min(1, fx * 1.5) : 0; windL.visible = isWind && fx > .01;
+    if (windL.visible) { ws.forEach((w, i) => { w.x += w.v * dt * (.4 + fx); if (w.x > 32) { w.x = -12; w.y = 1 + Math.random() * 17; w.z = -9 + Math.random() * 18; } windPos.set([w.x, w.y, w.z, w.x - w.l, w.y, w.z], i * 6); }); windGeo.attributes.position.needsUpdate = true; }
+    cloud.position.x = 9 + (isWind ? fx * 2 : 0);
     const noise = (Math.random() - .5) * .08;
     C.lvl = lerp(C.lvl, Math.abs(sig), Math.min(1, dt * 8));
     C.hist.push(sig + noise); C.hist.shift();
@@ -466,6 +522,9 @@ const INFO = {
   'Estradosso parabolico': 'La parte superiore curva, larga 80–120 cm, favorisce il deflusso dell’acqua e un’impermeabilizzazione ottimale.',
   'Intradosso piano': 'Il lato inferiore è rettilineo: permette controsoffitti piani, finiture interne varie e impianti sopra il controsoffitto.',
   'Deflusso dell’acqua': 'Luci da 12 a 32 m. TAU unisce i vantaggi di una copertura piana e di una a doppia pendenza.',
+  'Incastro trave a T': 'La trave secondaria a T si appoggia sulla trave principale precompressa. Dettaglio schematico di un collegamento tipico: appoggio, spinotti e sigillatura.',
+  'Appoggio in neoprene': 'Un cuscinetto elastomerico distribuisce il carico e lascia piccoli movimenti dovuti a dilatazioni e deformazioni. Dettaglio tipico, non un disegno esecutivo Manini.',
+  'Spinotti in acciaio': 'Barre in acciaio attraversano l’appoggio e collegano le travi, impedendo lo scorrimento. Dettaglio schematico.',
   'Pilastro': 'Pilastro prefabbricato in c.a.: la base di Manini Plan per edifici industriali, espositivi e commerciali.',
   'Trave principale precompressa': 'Trave principale in cemento armato precompresso: i trefoli tesi in fabbrica la rendono più snella e resistente a parità di sezione.',
   'Trave secondaria a T': 'Travi secondarie a sezione a T, anch’esse precompresse, appoggiate sulle travi principali.',
@@ -510,10 +569,11 @@ const beats = [
 beats.forEach((b, i) => b.m.beat = i);
 
 /* ---------- scroll mapping ---------- */
-let anchors = [], vw = innerWidth, vh = innerHeight, ranges = [];
+let anchors = [], vw = innerWidth, vh = innerHeight, ranges = [], secR = {};
 function measure() {
   vw = innerWidth; vh = innerHeight;
   anchors = [...document.querySelectorAll('[data-beat]')].map(el => ({ i: +el.dataset.beat, y: el.getBoundingClientRect().top + scrollY + el.offsetHeight / 2 })).sort((a, b) => a.i - b.i);
+  secR = {}; document.querySelectorAll('[data-beat]').forEach(el => { const r = el.getBoundingClientRect(); secR[+el.dataset.beat] = [r.top + scrollY, r.bottom + scrollY]; });
   ranges = [...document.querySelectorAll('.s3d')].map(el => { const r = el.getBoundingClientRect(); return [r.top + scrollY, r.bottom + scrollY]; });
   renderer.setSize(vw, vh, false);
   camera.aspect = vw / vh; camera.updateProjectionMatrix(); layoutView();
@@ -623,30 +683,58 @@ function mgUpdate() {
   const S2 = +mgS.value; mOndalP.setSpan(S2); $('#mgO').textContent = S2 + ' m';
   const cols = g => (Math.ceil(96 / g) + 1) * (Math.ceil(48 / 7.5) + 1), c = cols(S2), c0 = cols(12);
   $('#mgC').textContent = c; $('#mgD').textContent = c === c0 ? '0%' : '−' + Math.round((1 - c / c0) * 100) + '%';
+  const nx = Math.ceil(96 / S2), nz = Math.ceil(48 / 7.5);
+  $('#mgN').textContent = `Il modello mostra una campata. Capannone esempio 96 × 48 m: ${nx} ${nx === 1 ? 'campata' : 'campate'} da ${S2} m × ${nz} moduli da 7,5 m = ${nx + 1} × ${nz + 1} = ${c} pilastri. Conteggio geometrico.`;
   const ox = mOndalP.origin.x; beats[2].c.x = ox + S2 / 2; beats[2].labels[0].p.x = ox + S2 / 2; beats[2].labels[1].p.x = ox + S2; beats[2].labels[0].el.querySelector('b').textContent = S2 >= 32 ? 'Luce fino a 32 m' : `Luce ${S2} m`;
 }
-mgS.addEventListener('input', mgUpdate);
+mgS.addEventListener('input', mgUpdate); mgUpdate();
 
 /* ---------- UI: TAU rain ---------- */
 const tuR = $('#tuR');
-tuR.addEventListener('input', () => { const i = +tuR.value; mTau.rainN = Math.round(66 * i / 200) + 4; $('#tuO').textContent = i + ' mm/h'; $('#tuQ').textContent = fmt(i * 480 / 3600, 1) + ' L/s'; });
+tuR.addEventListener('input', () => { const i = +tuR.value; mTau.rainN = Math.round(300 * i / 200) + 10; $('#tuO').textContent = i + ' mm/h'; $('#tuQ').textContent = fmt(i * 480 / 3600, 1) + ' L/s'; });
 tuR.dispatchEvent(new Event('input'));
+$('#tuPv').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); const on = b.classList.contains('on'); mTau.pv.target = on ? 1 : 0; $('#tuP').textContent = on ? `${mTau.pv.n} pannelli · ${fmt(mTau.pv.area * .2)} kWp` : '—'; });
 
-/* ---------- UI: Plan explode ---------- */
+/* ---------- UI: Plan explode + joint detail ---------- */
+const plLabMain = beats[4].labels, PO = mPlan.origin;
+const plLabDet = [[V3(-8.8, 10.7, 0), 'Incastro trave a T'], [V3(-8.6, 9.8, 0), 'Appoggio in neoprene'], [V3(-8.85, 9.35, 0), 'Spinotti in acciaio']].map(([p, t]) => mkLabel(PO.clone().add(p), t));
 $('#plEx').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; $('#plEx').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  const x = +b.dataset.x; mPlan.exT = x; beats[4].d = x ? 66 : 48; beats[4].c.y = x ? 13 : 7.5; beats[4].labelsOff = !!x;
+  const x = +b.dataset.x, bt = beats[4];
+  mPlan.exT = x === 1 ? 1 : 0; mPlan.ex2T = x === 2 ? 1 : 0; mPlan.det = x === 2; mPlan.detGroup.visible = x === 2;
+  if (x === 0) { bt.d = 48; bt.az = -42; bt.el = 22; bt.c.copy(PO).add(V3(0, 7.5, 0)); }
+  if (x === 1) { bt.d = 66; bt.az = -42; bt.el = 22; bt.c.copy(PO).add(V3(0, 13, 0)); }
+  if (x === 2) { bt.d = 8.5; bt.az = -38; bt.el = 22; bt.c.copy(PO).add(V3(-8.8, 10, 0)); }
+  bt.labelsOff = x === 1; bt.labels = x === 2 ? plLabDet : plLabMain;
+  (x === 2 ? plLabMain : plLabDet).forEach(l => l.el.classList.remove('on'));
 });
 
-/* ---------- UI: Solai selector ---------- */
+/* ---------- UI: Solai selector + thickness ---------- */
 const SO = [
-  { z: -5.5, t: '<b>Poker.</b> Alveolare estruso in 10 spessori, da 20 a 50 cm. Rigido, resistente al fuoco, intradosso piano. Per multipiano, parcheggi, uffici.' },
+  { z: -5.5, t: '<b>Poker.</b> Alveolare estruso in 10 spessori, da 20 a 50 cm. Rigido, resistente al fuoco, intradosso piano. Per multipiano, parcheggi, uffici. I valori intermedi sono indicativi.' },
   { z: 2.1, t: '<b>PI-Greco.</b> Largo 250 cm, spessori 40–80 cm. Grandi aperture e lucernari facili, resistenza al fuoco R120.' },
   { z: 5.55, t: '<b>Pluriman e Solman.</b> Per grandi luci e carichi importanti: lamiera collaborante, spessori 60, 75 e 90 cm, generalmente R120.' },
 ];
-function soSet(i) { beats[5].c.z = mSolai.origin.z + SO[i].z; $('#soI').innerHTML = SO[i].t; }
+const SOC = [
+  { min: 1, max: 10, step: 1, val: 4, th: v => .2 + (v - 1) * .3 / 9, txt: v => '≈ ' + Math.round((.2 + (v - 1) * .3 / 9) * 100) + ' cm', fn: 'setPoker', lab: 'Poker' },
+  { min: 40, max: 80, step: 5, val: 60, th: v => v / 100, txt: v => v + ' cm', fn: 'setPi', lab: 'PI-Greco' },
+  { min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setPlu', lab: 'Pluriman · Solman' },
+];
+const soT = $('#soT'); let soCur = 0;
+function soApply() {
+  const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v);
+  mSolai[c.fn](th); $('#soTo').textContent = c.txt(v);
+  const lb = beats[5].labels[soCur]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(v)}`; lb.p.y = 1.1 + th + .3;
+}
+function soSet(i) {
+  soCur = i; const c = SOC[i];
+  soT.min = c.min; soT.max = c.max; soT.step = c.step; soT.value = c.val;
+  beats[5].c.z = mSolai.origin.z + SO[i].z; $('#soI').innerHTML = SO[i].t; soApply();
+}
+soT.addEventListener('input', soApply);
 $('#soSel').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#soSel').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); soSet(+b.dataset.s); });
-soSet(0);
+soSet(0); soApply();
+[1, 2].forEach(i => { const c = SOC[i], th = c.th(c.val); mSolai[c.fn](th); const lb = beats[5].labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)}`; lb.p.y = 1.1 + th + .3; });
 
 /* ---------- UI: configurator ---------- */
 const ROOFINFO = {
@@ -722,9 +810,10 @@ cnEv.addEventListener('click', e => {
 /* ---------- UI: green roof + rain ---------- */
 $('#gnT').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on');
-  const on = b.classList.contains('on'); mGreen.roofs[b.dataset.t].forEach(o => o.userData.hide = !on);
+  const on = b.classList.contains('on'); mGreen.roofs[b.dataset.t].forEach(o => o.userData.hide = !on); if (typeof GR !== 'undefined') GR.ct = ZERO();
 });
-const GR = { on: false, N: 260, drops: [], ct: { sl: 0, sr: 0, gl: 0, gr: 0 }, tx: 0 };
+const ZERO = () => ({ sl: 0, sr: 0, gl: 0, gr: 0, tl: 0, tr: 0 });
+const GR = { on: false, N: 260, drops: [], ct: ZERO(), tx: 0 };
 const grPos = new Float32Array(GR.N * 3), grGeo = new THREE.BufferGeometry();
 grGeo.setAttribute('position', new THREE.BufferAttribute(grPos, 3));
 const grPts = new THREE.Points(grGeo, new THREE.PointsMaterial({ color: 0x7fc4ff, size: .28, transparent: true, opacity: .95, depthWrite: false }));
@@ -732,7 +821,7 @@ grPts.frustumCulled = false; grPts.visible = false; mGreen.g.add(grPts);
 const respawn = d => { d.x = 1 + Math.random() * 34; d.z = .5 + Math.random() * 29; d.y = 14 + Math.random() * 22; d.v = 0; d.s = 0; };
 for (let i = 0; i < GR.N; i++) { const d = {}; respawn(d); GR.drops.push(d); }
 $('#gnRain').addEventListener('click', e => {
-  GR.on = !GR.on; e.target.textContent = GR.on ? 'Ferma la pioggia' : 'Fai piovere'; GR.ct = { sl: 0, sr: 0, gl: 0, gr: 0 }; grPts.visible = GR.on;
+  GR.on = !GR.on; e.target.textContent = GR.on ? 'Ferma la pioggia' : 'Fai piovere'; GR.ct = ZERO(); grPts.visible = GR.on;
   GR.drops.forEach(respawn);
 });
 function grUpdate(dt) {
@@ -743,8 +832,9 @@ function grUpdate(dt) {
       d.v += 14 * dt; d.y -= d.v * dt;
       if (d.y <= 8.4) {
         const bay = clamp(Math.floor(d.z / 7.5), 0, 3), green = bay % 2 === 1 && greenOn;
-        if (green) { c.gl++; if (Math.random() < .7) { respawn(d); } else { c.gr++; d.s = 1; d.y = 8.4; } }
-        else { c.sl++; c.sr++; d.s = 1; d.y = 8.4; }
+        c.tl++;
+        if (green) { c.gl++; if (Math.random() < .7) { respawn(d); } else { c.gr++; c.tr++; d.s = 1; d.y = 8.4; } }
+        else { c.sl++; c.sr++; c.tr++; d.s = 1; d.y = 8.4; }
       }
     } else if (d.s === 1) {
       const dir = d.x < 18 ? -1 : 1; d.x += dir * 8 * dt; if (d.x < 0 || d.x > 36) { d.s = 2; d.v = 0; }
@@ -752,11 +842,13 @@ function grUpdate(dt) {
     grPos[i * 3] = d.x; grPos[i * 3 + 1] = d.y; grPos[i * 3 + 2] = d.z;
   });
   grGeo.attributes.position.needsUpdate = true;
-  GR.tx += dt; if (GR.tx > .25) { GR.tx = 0; $('#gnA').textContent = c.sl ? Math.round(100 * c.sr / c.sl) + '%' : '—'; $('#gnB').textContent = c.gl ? Math.round(100 * c.gr / c.gl) + '%' : '—'; }
+  GR.tx += dt; if (GR.tx > .25) { GR.tx = 0; $('#gnA').textContent = c.sl ? Math.round(100 * c.sr / c.sl) + '%' : '—'; $('#gnB').textContent = greenOn ? (c.gl ? Math.round(100 * c.gr / c.gl) + '%' : '—') : 'spento'; $('#gnC').textContent = c.tl ? Math.round(100 * c.tr / c.tl) + '%' : '—'; }
 }
 
 /* ---------- loop ---------- */
-let fS = 0, last = performance.now(), time = 0, activeBeat = 0;
+let fS = 0, last = performance.now(), time = 0, activeBeat = 0, labelsShown = false;
+let gate = !!window.__splashDone || !document.getElementById('splash');
+document.addEventListener('splashdone', () => { gate = true; });
 const camPos = V3(), camTgt = V3(), tmp = V3();
 let intro = REDUCED ? 1 : 0;
 function sph(t, d, az, el, out) {
@@ -777,8 +869,8 @@ function tick(now) {
   sph(camTgt, d * (1 + (1 - introK) * .35), az + (1 - introK) * 30, el + (1 - introK) * 6, camPos);
   camera.position.copy(camPos); camera.lookAt(camTgt);
   models.forEach(m => { m.target = m.beat !== undefined && Math.abs(fS - m.beat) < 1.15 ? 1 : 0; });
-  mOndal.target = Math.abs(fS) < 2.2 ? 1 : 0;
-  if (!REDUCED && intro < 1) { intro += dt * .35; }
+  mOndal.target = gate && Math.abs(fS) < 2.2 ? 1 : 0;
+  if (!REDUCED && gate && intro < 1) { intro += dt * .35; }
   // lights follow (the sun slider drives the key light on the Ondal step)
   if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snTs.forEach(t => t.value = sun.h); }
   const sw1 = clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1), sw2 = clamp(1 - Math.abs(fS - 2) * 1.6, 0, 1), sw = Math.max(sw1, sw2), sv = sunVec(sun.h), sm0 = sw2 > sw1 ? mOndalP : mOndal;
@@ -792,18 +884,20 @@ function tick(now) {
   if (sw > .02) sunUI(sv);
   rim.position.set(camTgt.x + 30, camTgt.y + 20, camTgt.z - 34); rim.target.position.copy(camTgt);
   const ab = Math.round(fS); if (ab !== activeBeat) { activeBeat = ab; closeTags(); }
-  tabs.classList.toggle('on', fS > .7 && fS < 6.4);
+  const cy0 = scrollY + vh / 2;
+  tabs.classList.toggle('on', !!secR[1] && !!secR[6] && cy0 > secR[1][0] && cy0 < secR[6][1]);
   tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.b === ab));
   const run = inView() || Math.abs(fS - Math.round(fS)) > .02;
   if (run) {
     models.forEach(m => m.update(dt));
-    mTau.rain(dt);
+    mTau.rain(dt); mTau.pvUpdate(dt, time);
     mGreen.roofs.pv.concat(mGreen.roofs.green).forEach(o => { if (o.userData.hide) o.visible = false; });
     S.step(dt); S.apply(); seUI();
     mConn.conn.update(dt, time);
     fireUpdate(dt); grUpdate(dt);
     beats.forEach((b, bi) => {
-      const show = Math.abs(fS - bi) < .22 && b.m.t > .97 && !b.labelsOff;
+      const sr = secR[bi], cy = scrollY + vh / 2, inSec = sr && cy > sr[0] - vh * .1 && cy < sr[1] + vh * .1;
+      const show = inSec && Math.abs(fS - bi) < .22 && b.m.t > .97 && !b.labelsOff;
       b.labels.forEach(l => {
         tmp.copy(l.p).project(camera);
         const x = (tmp.x * .5 + .5) * vw, y = (-tmp.y * .5 + .5) * vh;
@@ -811,8 +905,9 @@ function tick(now) {
         l.el.classList.toggle('on', show && tmp.z < 1);
       });
     });
+    labelsShown = true;
     renderer.render(scene, camera);
-  }
+  } else if (labelsShown) { labelHost.querySelectorAll('.tag.on').forEach(x => x.classList.remove('on')); closeTags(); labelsShown = false; }
 }
 measure();
 requestAnimationFrame(tick);
