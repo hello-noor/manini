@@ -443,6 +443,8 @@
   @media(max-width:560px){.two{grid-template-columns:1fr}.areas{grid-template-columns:1fr}.area span{flex-direction:row;align-items:center;gap:8px;height:auto}.area .bar{display:none}.cf-nav{flex-wrap:wrap}.cf-nav .btn{flex:1}.ob{padding:12px}}
   @media(prefers-reduced-motion:reduce){.ct-r{animation:none}}
   @media(min-width:901px){.card{max-height:calc(100svh - 128px);overflow-y:auto;scrollbar-width:thin}}
+  .vw{display:flex;gap:6px;flex-wrap:wrap}.vw button,.vmov{font:600 12.5px Inter,sans-serif;color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:99px;padding:8px 12px;cursor:pointer;transition:.2s}
+  .vw button.on,.vmov.on{background:var(--brand);border-color:#4da3ff}.vmov{width:100%;text-align:center}
   .sw2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .swt{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.04);cursor:pointer;transition:.25s}
   .swt input{position:absolute;opacity:0}.tk{flex:none;width:38px;height:22px;border-radius:99px;background:rgba(255,255,255,.16);position:relative;transition:.25s}
@@ -629,6 +631,8 @@
     <p class="lead m-hide" style="font-size:16px"><b style="color:#fff">Jawfix®</b> tiene la trave sul pilastro. <b style="color:#fff">AllDrift®</b> lascia scorrere il pannello di tamponamento. Accendili uno alla volta o insieme e scuoti.</p>
     <div class="ctl">
       <div class="sw2"><label class="swt"><input type="checkbox" id="swJ"><span class="tk"></span><span class="tx"><b>Jawfix®</b><i>trave–pilastro</i></span></label><label class="swt"><input type="checkbox" id="swA"><span class="tk"></span><span class="tx"><b>AllDrift®</b><i>pannello–struttura</i></span></label></div>
+      <div class="vw" id="seView"><button class="on" data-v="all">Vista intera</button><button data-v="jaw">Da vicino: Jawfix®</button><button data-v="alld">Da vicino: AllDrift®</button></div>
+      <button class="vmov" id="seMov" type="button">▶ Mostra il movimento (lento)</button>
       <label class="row">Magnitudo<input id="seI" type="range" min="4" max="8" step="0.5" value="6"><output id="seIo">M 6,0</output></label>
       <button class="btn" id="seGo">Scuoti</button>
       <div class="read"><div><span>Trave · spostamento / limite</span><strong id="seD">0,00 / 0,10 m</strong></div><div><span>Pannello · spostamento / limite</span><strong id="seC">0,00 / 0,10 m</strong></div></div>

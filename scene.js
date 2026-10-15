@@ -430,21 +430,19 @@ function buildSeismic(ox) {
   const mk = (w, d, x, z) => { const g = new THREE.BoxGeometry(w, H, d); g.translate(0, H / 2, 0); const c = new THREE.Mesh(g, M.concrete); c.castShadow = c.receiveShadow = true; c.matrixAutoUpdate = false; m.g.add(c); return { c, x, z }; };
   const cols = { L: [mk(.7, .7, -X, -2.5), mk(.7, .7, -X, 2.5)], R: [mk(1.3, 1.1, X, -2.5), mk(1.3, 1.1, X, 2.5)] };
   const pivot = new THREE.Group(); m.g.add(pivot);
-  const beam = box(12.6, .9, 5.8, M.concrete, 6.3, 0, 0); beam.castShadow = true; pivot.add(beam);
-  const slab = box(12.6, .25, 6.6, M.concreteD, 6.3, .55, 0); slab.castShadow = true; pivot.add(slab);
+  const beam = box(15.6, .9, 5.8, M.concrete, 7.8, 0, 0); beam.castShadow = true; pivot.add(beam);
+  const slab = box(15.6, .25, 6.6, M.concreteD, 7.8, .55, 0); slab.castShadow = true; pivot.add(slab);
   const seatR = new THREE.Group(); m.g.add(seatR);
   const rigid = box(1.1, .12, 4.8, M.steel, 0, 0, 0); const bolt = [-1.8, 1.8].map(z => { const b = box(.18, .5, .18, M.steel, 0, .2, z); seatR.add(b); return b; });
-  // Jawfix: coppie di dissipatori assiali rossi in diagonale, dalla trave (staffe verdi) alla faccia del pilastro
-  const jawParts = [], RED = new THREE.MeshStandardMaterial({ color: 0xd14a40, roughness: .45, metalness: .25 }), TEAL = new THREE.MeshStandardMaterial({ color: 0x86bfc3, roughness: .5, metalness: .4 }), CLAMP = new THREE.MeshStandardMaterial({ color: 0x8c9fb4, roughness: .4, metalness: .7 });
-  const JA = Math.atan2(.8, 1.5), JL = Math.hypot(.8, 1.5);
-  for (const zc of [-2.5, 2.5]) for (const dz of [-.22, .22]) {
-    const zz = zc + dz, g = new THREE.Group(); g.position.set(0, 0, zz);
-    const bar = box(.16, JL - .5, .1, RED, -1.1, -.85, 0); bar.rotation.z = JA; g.add(bar);
-    for (const t of [.14, .86]) { const c = box(.26, .34, .15, CLAMP, -1.5 + .8 * t, -.05 - 1.45 * t, 0); c.rotation.z = JA; g.add(c); }
-    g.add(box(.55, .09, .34, TEAL, -1.5, -.04, 0));                         // staffa sulla trave
-    const up = box(.14, .22, .3, TEAL, -1.4, -.2, 0); g.add(up);
-    g.add(box(.1, .55, .34, TEAL, -.7, -1.6, 0));                           // staffa sul pilastro
-    seatR.add(g); g.traverse(o => { if (o.isMesh) { o.castShadow = true; jawParts.push(o); } });
+  // Jawfix: dissipatori assiali rossi, due coppie per lato del pilastro; i capi seguono trave e pilastro
+  const RED = new THREE.MeshStandardMaterial({ color: 0xd14a40, roughness: .45, metalness: .25 }), TEAL = new THREE.MeshStandardMaterial({ color: 0x86bfc3, roughness: .5, metalness: .4 }), CLAMP = new THREE.MeshStandardMaterial({ color: 0x8c9fb4, roughness: .4, metalness: .7 });
+  const jawStruts = [];
+  for (const zc of [-2.5, 2.5]) for (const sx of [-1, 1]) for (const dz of [-.22, .22]) {
+    const g = new THREE.Group(); const bar = box(.15, 1, .1, RED, 0, 0, 0); g.add(bar);
+    const c1 = box(.26, .36, .16, CLAMP, 0, 0, 0), c2 = box(.26, .36, .16, CLAMP, 0, 0, 0); g.add(c1, c2);
+    const tb = box(.6, .09, .34, TEAL, 0, 0, 0), bb = box(.1, .55, .34, TEAL, 0, 0, 0);
+    m.g.add(g, tb, bb); g.traverse(o => o.isMesh && (o.castShadow = true));
+    jawStruts.push({ g, bar, c1, c2, tb, bb, sx, zz: zc + dz });
   }
   seatR.add(rigid);
   // pannello di tamponamento sotto la trave, nel filare dei pilastri; AllDrift tra trave e pannello (staffe a triangolo, asta, cerniera rossa, piastra asolata)
@@ -466,12 +464,13 @@ function buildSeismic(ox) {
     for (const dz of [-.22, .22]) addBolt(br, dx0(sx), -.06, dz, [Math.PI, 0, 0]);
   }
   function dx0(sx) { return sx * .0; }
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 2.5, 20), STEEL); rod.rotation.z = Math.PI / 2; rod.position.set(DX, YB - .5, ZP); rod.castShadow = true; structG.add(rod);
-  const brg = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .34, 24), STEEL); brg.rotation.z = Math.PI / 2; brg.position.set(DX, YB - .5, ZP); brg.castShadow = true; structG.add(brg);
-  const redB = box(.34, .5, .5, RED, DX + .05, YB - .78, ZP); redB.castShadow = true; structG.add(redB);        // cerniera rossa
-  for (const dz of [-.12, .12]) { const rb = box(.44, .12, .06, RED, DX, YB - .55, ZP + dz * 2.1); structG.add(rb); }
-  addBolt(structG, DX + .2, YB - .84, ZP + .26, [Math.PI / 2, 0, 0]); addBolt(structG, DX - .12, YB - .64, ZP - .26, [-Math.PI / 2, 0, 0]);
-  const pinS = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .5, 14), STEEL); pinS.position.set(DX - .12, YB - 1.1, ZP); pinS.castShadow = true; structG.add(pinS);   // perno che scorre nell'asola
+  const swing = new THREE.Group(); swing.position.set(DX - .1, 0, ZP); structG.add(swing);   // asta+cerniera: ruota per recuperare i difetti di montaggio
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 2.5, 20), STEEL); rod.rotation.z = Math.PI / 2; rod.position.set(.1, YB - .5, 0); rod.castShadow = true; swing.add(rod);
+  const brg = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .34, 24), STEEL); brg.rotation.z = Math.PI / 2; brg.position.set(.1, YB - .5, 0); brg.castShadow = true; swing.add(brg);
+  const redB = box(.34, .5, .5, RED, .15, YB - .78, 0); redB.castShadow = true; swing.add(redB);        // cerniera rossa
+  for (const dz of [-.12, .12]) { const rb = box(.44, .12, .06, RED, .1, YB - .55, dz * 2.1); swing.add(rb); }
+  addBolt(swing, .3, YB - .84, .26, [Math.PI / 2, 0, 0]); addBolt(swing, -.02, YB - .64, -.26, [-Math.PI / 2, 0, 0]);
+  const pinS = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .5, 14), STEEL); pinS.position.set(0, YB - 1.1, 0); pinS.castShadow = true; swing.add(pinS);   // perno che scorre nell'asola
   // carrello sul bordo del pannello: piastra a osso con asole e bulloni
   const plateG = new THREE.Group(); m.g.add(plateG);
   const slotM = new THREE.MeshStandardMaterial({ color: 0x151b24, roughness: .9 });
@@ -495,7 +494,9 @@ function buildSeismic(ox) {
   const reset = () => { Object.assign(S, { t: -1, xg: 0, vg: 0, uL: 0, vL: 0, uR: 0, vR: 0, failed: false, fall: 0, fv: 0, peak: 0, running: false, d: 0, pfail: false, pfall: 0, pfv: 0, ppeak: 0, pd: 0 }); beam.material = M.concrete; panelMat.emissive.setHex(0); panelMat.emissiveIntensity = 0; };
   S.reset = reset; S.start = () => { reset(); S.t = 0; S.running = true; };
   const wL = 2 * Math.PI * 1.0, wR = 2 * Math.PI * 2.4, z = .07;
+  S.demo = false; S.dt = 0;
   S.step = dt => {
+    if (S.demo) { S.dt += dt; S.xg = 0; S.uL = .1 * Math.sin(S.dt * 1.6); S.uR = -.03 * Math.sin(S.dt * 1.6); S.failed = false; S.pfail = false; S.fall = 0; S.pfall = 0; S.peak = 0; S.ppeak = 0; return; }
     const sub = Math.max(1, Math.ceil(dt * 240)), h = dt / sub;
     for (let i = 0; i < sub; i++) {
       if (S.t >= 0 && S.running) S.t += h;
@@ -525,7 +526,19 @@ function buildSeismic(ox) {
     pivot.rotation.z = -S.fall;
     seatR.position.set(X + xg + uR, hy + .17, 0);
     const rg = !S.jaw;
-    rigid.visible = false; bolt.forEach(b => b.visible = false); jawParts.forEach(p => p.visible = !rg);
+    rigid.visible = false; bolt.forEach(b => b.visible = false);
+    const th = pivot.rotation.z, cth = Math.cos(th), sth = Math.sin(th);
+    jawStruts.forEach(o => {
+      o.g.visible = o.tb.visible = o.bb.visible = S.jaw; if (!S.jaw) return;
+      const lx = 12.4 + o.sx * 1.5, ly = -.45;                                    // attacco alla trave (riferimento della trave)
+      const tx = pivot.position.x + lx * cth - ly * sth, ty = pivot.position.y + lx * sth + ly * cth;
+      const bx = seatR.position.x + o.sx * .72, by = seatR.position.y - 1.55;       // attacco alla faccia del pilastro
+      const dx = bx - tx, dy = by - ty, L = Math.hypot(dx, dy), ang = Math.atan2(dx, -dy);
+      o.g.position.set((tx + bx) / 2, (ty + by) / 2, o.zz); o.g.rotation.z = ang;
+      o.bar.scale.y = Math.max(.1, L - .5); o.c1.position.y = L / 2 - .3; o.c2.position.y = -L / 2 + .3;
+      o.tb.position.set(tx, ty - .04, o.zz); o.tb.rotation.z = pivot.rotation.z; o.bb.position.set(bx - o.sx * .05, by + .02, o.zz);
+    });
+    swing.rotation.y = S.all ? clamp(uL * .1, -.22, .22) : 0;
     // pannello: ancorato in basso al terreno; in testa segue la struttura (rigido) o scorre (AllDrift)
     panelG.position.set(-X + xg, 0, ZP); panelG.rotation.x = S.pfall;
     const k = S.all ? 0 : uL / H;
@@ -973,11 +986,15 @@ const S = mSeis.seis;
 const seI = $('#seI');
 const magText = M => 'M ' + M.toFixed(1).replace('.', ',');
 const magWord = M => M < 5 ? 'avvertito' : M < 6 ? 'danni lievi' : M < 7 ? 'forte' : 'molto forte';
-$('#swJ').addEventListener('change', e => { S.jaw = e.target.checked; S.reset(); });
-$('#swA').addEventListener('change', e => { S.all = e.target.checked; S.reset(); });
+$('#swJ').addEventListener('change', e => { S.jaw = e.target.checked; S.reset(); if (e.target.checked) seView('jaw'); });
+$('#swA').addEventListener('change', e => { S.all = e.target.checked; S.reset(); if (e.target.checked) seView('alld'); });
 seI.addEventListener('input', () => { const M = +seI.value; S.I = 1 + (M - 4) * 2.25; $('#seIo').textContent = magText(M); });
 seI.dispatchEvent(new Event('input'));
-$('#seGo').addEventListener('click', () => S.start());
+$('#seGo').addEventListener('click', () => { S.demo = false; $('#seMov').classList.remove('on'); S.start(); });
+const so8 = mSeis.origin, bt8 = beats[8], VIEWS = { all: [0, 4.5, 0, 44, -14, 10], jaw: [5.4, 5.6, 2.5, 12, -20, -6], alld: [-3.2, 5.9, 2.5, 9, -22, -12] };
+function seView(k) { const v = VIEWS[k]; bt8.c.copy(so8).add(V3(v[0], v[1], v[2])); bt8.d = v[3]; bt8.az = v[4]; bt8.el = v[5]; document.querySelectorAll('#seView button').forEach(b => b.classList.toggle('on', b.dataset.v === k)); }
+$('#seView').addEventListener('click', e => { const b = e.target.closest('button'); if (b) seView(b.dataset.v); });
+$('#seMov').addEventListener('click', e => { S.demo = !S.demo; e.currentTarget.classList.toggle('on', S.demo); S.reset(); if (!S.demo) S.dt = 0; });
 const fm = v => v.toFixed(2).replace('.', ',');
 function seUI() {
   const M = +seI.value, cb = S.cap(), cp = S.capP();
