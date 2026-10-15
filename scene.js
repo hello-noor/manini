@@ -182,7 +182,7 @@ function buildOndal(ox, o = {}) {
         const cnt = Math.max(3, Math.floor(D / 2.4) + 1);
         const Tp = poly([[-.12, 0], [.12, 0], [.12, .55], [.5, .55], [.5, .8], [-.5, .8], [-.5, .55], [-.12, .55]]);
         for (let q = 0; q < cnt; q++) { const t = extrudeX(Tp, L, M.concrete); t.position.set(xm, colH, q * D / (cnt - 1)); m.add(t, .42 + (q / cnt) * .4); }
-        m.add(box(L + .6, .14, D + 1.2, M.membrane, xm, colH + .87, D / 2), .88, V3(0, 16, 0));
+        const mb = box(L + .6, .14, D + 1.2, M.membrane.clone(), xm, colH + .87, D / 2); m.add(mb, .88, V3(0, 16, 0)); m.cappelle.push(mb);
         m.stat = { name: 'Travi a T', n: (rows.length - 1) * cnt };
       }
       continue;
@@ -854,12 +854,23 @@ function cfgLabels() {
   beats[7].labels.forEach(l => l.el.remove());
   beats[7].labels = [mkLabel(P(W * .45, y, D * .5), r[0]), mkLabel(P(W * .85, y - .6, D * .15), r[1]), mkLabel(P(0, CF.h * .55, D), 'Pilastri prefabbricati')];
 }
-window.__cfgText = () => { const SPN = CF.roof === 'new' ? 26 : 20, nm = { shed: 'Ondal shed', curve: 'Ondal cappella curva', new: 'Ondal New', pv: 'Ondal Powershed', flat: 'Ondal piano con verde e fotovoltaico', tau: 'TAU', plan: 'Manini Plan' }[CF.roof]; return `Configurazione scelta sul sito: ${nm}, ${CF.x} campate da ${SPN} m, ${CF.z} moduli da 7,5 m, altezza ${CF.h} m (circa ${CF.x * SPN * CF.z * 7.5} m²).`; };
+window.__cfgText = () => { const v = cuVals(), SPN = v.SPN, nm = { shed: 'Ondal shed', curve: 'Ondal cappella curva', new: 'Ondal New', pv: 'Ondal Powershed', flat: 'Ondal piano con verde e fotovoltaico', tau: 'TAU', plan: 'Manini Plan' }[CF.roof]; return `Configurazione scelta sul sito: ${nm}${manto && CF.roof !== 'flat' ? ', manto ' + manto : ''}. Misure richieste: larghezza ${fmt(v.W)} m × profondità ${fmt(v.D)} m, altezza ${fmt(v.H)} m (circa ${fmt(v.W * v.D)} m²).${(v.W > 4 * SPN || v.D > 60 || v.H > 12) ? ' Le misure superano il massimo mostrato dal modello 3D.' : ''}`; };
+const CU = { W: 0, D: 0, H: 0 };
+const cuOn = () => CU.W > 0 || CU.D > 0 || CU.H > 0;
+const cuVals = () => { const SPN = CF.roof === 'new' ? 26 : 20; return { W: CU.W || CF.x * SPN, D: CU.D || CF.z * 7.5, H: CU.H || CF.h, SPN }; };
+function cuCount(v) {
+  const bays = Math.ceil(v.W / v.SPN), rowsN = Math.ceil(v.D / 7.5);
+  const n = { shed: bays * (rowsN + 1), pv: bays * (rowsN + 1), curve: bays * (rowsN + 1), new: bays * (rowsN + 1), flat: bays * rowsN, tau: bays * (Math.round(v.D / 5) + 1), plan: bays * Math.max(3, Math.floor(v.D / 2.4) + 1) }[CF.roof];
+  return { col: (bays + 1) * (rowsN + 1), n };
+}
+window.__cfgArea = () => { const a = cuVals().W * cuVals().D; return a < 1000 ? '<1000 mq' : a <= 3000 ? '1000<3000 mq' : '>3000 mq'; };
 function cfgUI() {
-  const SPN = CF.roof === 'new' ? 26 : 20, W = CF.x * SPN, D = CF.z * 7.5;
+  const v = cuVals(), SPN = v.SPN, W = v.W, D = v.D, cc = cuCount(v);
   $('#cfXo').textContent = `${CF.x} × ${SPN} m`; $('#cfZo').textContent = `${CF.z} × 7,5 m`; $('#cfHo').textContent = CF.h + ' m';
-  $('#cfA').textContent = fmt(W * D) + ' m²'; $('#cfC').textContent = (CF.x + 1) * (CF.z + 1);
-  $('#cfNl').textContent = mCfg.stat.name; $('#cfN').textContent = mCfg.stat.n; $('#cfHh').textContent = fmt(CF.h - 1.2, 1) + ' m';
+  $('#cfA').textContent = fmt(W * D) + ' m²'; $('#cfC').textContent = cuOn() ? cc.col : (CF.x + 1) * (CF.z + 1);
+  $('#cfNl').textContent = mCfg.stat.name; $('#cfN').textContent = cuOn() ? cc.n : mCfg.stat.n; $('#cfHh').textContent = fmt(v.H - 1.2, 1) + ' m';
+  const over = W > 4 * SPN + 1e-6 || D > 8 * 7.5 + 1e-6 || v.H > 12 || W < SPN * .99 && cuOn() && 0;
+  const note = $('#cuN'); if (note) note.textContent = !cuOn() ? '' : over ? `Il modello 3D mostra al massimo ${4 * SPN} × 60 m, altezza 12 m. Nella richiesta inserisco le tue misure: ${fmt(W)} × ${fmt(D)} m, altezza ${fmt(v.H)} m.` : `Misure inserite nella richiesta: ${fmt(W)} × ${fmt(D)} m, altezza ${fmt(v.H)} m.`;
   $('#cfInfo').innerHTML = ROOFINFO[CF.roof];
 }
 function cfgRebuild() {
@@ -870,14 +881,26 @@ function cfgRebuild() {
   beats[7].c.copy(nm.origin).add(V3(W / 2, CF.h * .55, D / 2)); beats[7].d = 40 + (W + D) * .85;
   cfgLabels(); cfgUI(); mantoApply();
 }
-const MANTI = { lamiera: { c: 0xc9ced3, m: .8, r: .4, t: '<b>Lamiera.</b> Lastre curve in lamiera zincata preverniciata, con fissaggi meccanici e giunti che seguono la dilatazione. Coibentazione con materassino in lana di vetro o di roccia, o pannelli rigidi di polistirene.' }, inox: { c: 0xeef2f6, m: .95, r: .22, t: '<b>Acciaio inox.</b> Lastre sagomate in acciaio inox con fissaggi e giunti idonei, per un’impermeabilizzazione che dura.' }, guaina: { c: 0xb59a62, m: 0, r: .7, t: '<b>Guaina.</b> Membrane elastomeriche protette da scaglie di ardesia, colorabili. I colori chiari riflettono i raggi solari e riducono l’isola di calore.' }, tpo: { c: 0xf2f3f1, m: 0, r: .45, t: '<b>TPO.</b> Membrana sintetica in poliolefina termoplastica, resistente ai raggi UV, con prestazioni energetiche alte e lunga durata.' } };
+const MANTI = { lamiera: { c: 0xaab6c2, m: .95, r: .32, t: '<b>Lamiera.</b> Lastre curve in lamiera zincata preverniciata, con fissaggi meccanici e giunti che seguono la dilatazione. Coibentazione con materassino in lana di vetro o di roccia, o pannelli rigidi di polistirene.' }, inox: { c: 0xf4f7fa, m: 1, r: .12, t: '<b>Acciaio inox.</b> Lastre sagomate in acciaio inox con fissaggi e giunti idonei, per un’impermeabilizzazione che dura.' }, guaina: { c: 0x3b3e43, m: 0, r: .95, t: '<b>Guaina.</b> Membrane elastomeriche protette da scaglie di ardesia, colorabili. I colori chiari riflettono i raggi solari e riducono l’isola di calore.' }, tpo: { c: 0xffffff, m: 0, r: .6, t: '<b>TPO.</b> Membrana sintetica in poliolefina termoplastica, resistente ai raggi UV, con prestazioni energetiche alte e lunga durata.' } };
 let manto = 'lamiera';
-function mantoApply() { const k = MANTI[manto]; (mCfg.cappelle || []).forEach(c => { c.material = c.material === M.cap ? c.material.clone() : c.material; c.material.color.setHex(k.c); c.material.metalness = k.m; c.material.roughness = k.r; }); $('#mnI').innerHTML = k.t; }
+function mantoApply() {
+  const k = MANTI[manto], has = (mCfg.cappelle || []).length > 0, flat = CF.roof === 'flat';
+  (mCfg.cappelle || []).forEach(c => { if (!c.userData.own) { c.material = c.material.clone(); c.userData.own = true; } const mt = c.material; mt.color.setHex(k.c); mt.metalness = k.m; mt.roughness = k.r; mt.envMapIntensity = k.m > .5 ? 2.2 : 1; mt.transparent = false; mt.opacity = 1; mt.needsUpdate = true; });
+  $('#mnT').style.opacity = has ? 1 : .4; $('#mnT').style.pointerEvents = has ? '' : 'none';
+  $('#mnI').innerHTML = has ? k.t : (flat ? 'Con il tetto verde e il fotovoltaico il manto è già scelto: il tetto è coperto da terra e vegetazione e da pannelli.' : 'Questo sistema ha già il suo manto: guaina e isolamento continui.');
+}
 $('#mnT').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#mnT').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); manto = b.dataset.k; mantoApply(); });
 let cfT = 0; const cfgSoon = () => { clearTimeout(cfT); cfT = setTimeout(cfgRebuild, 160); };
 $('#cfRoof').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#cfRoof').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); CF.roof = b.dataset.r; cfgRebuild(); });
-for (const [id, k] of [['#cfX', 'x'], ['#cfZ', 'z'], ['#cfH', 'h']]) $(id).addEventListener('input', e => { CF[k] = +e.target.value; cfgUI(); cfgSoon(); });
-cfgRebuild(); mCfg.t = REDUCED ? 1 : 0;
+function cuSync() { const v = cuVals(); $('#cuW').value = ''; $('#cuD').value = ''; $('#cuH').value = ''; $('#cuW').placeholder = fmt(v.W); $('#cuD').placeholder = fmt(v.D); $('#cuH').placeholder = fmt(v.H); }
+for (const [id, k] of [['#cfX', 'x'], ['#cfZ', 'z'], ['#cfH', 'h']]) $(id).addEventListener('input', e => { CF[k] = +e.target.value; CU.W = CU.D = CU.H = 0; cfgUI(); cfgSoon(); cuSync(); });
+for (const [id, k] of [['#cuW', 'W'], ['#cuD', 'D'], ['#cuH', 'H']]) $(id).addEventListener('input', e => {
+  const x = parseFloat(String(e.target.value).replace(',', '.')); CU[k] = x > 0 && x <= 5000 ? x : 0;
+  const v = cuVals(), SPN = v.SPN;
+  CF.x = clamp(Math.round(v.W / SPN), 1, 4); CF.z = clamp(Math.round(v.D / 7.5), 2, 8); CF.h = clamp(Math.round(v.H), 6, 12);
+  $('#cfX').value = CF.x; $('#cfZ').value = CF.z; $('#cfH').value = CF.h; cfgUI(); cfgSoon();
+});
+cfgRebuild(); mCfg.t = REDUCED ? 1 : 0; cuSync();
 
 /* ---------- UI: seismic (magnitude) ---------- */
 const S = mSeis.seis;

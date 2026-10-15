@@ -96,6 +96,7 @@
       e.preventDefault();
       const r = [...cform.querySelectorAll('input[name="intervention"]')].find(i => i.value === t.dataset.prefill); if (r) r.checked = true;
       let note = t.dataset.note || ''; if (t.dataset.cfg && window.__cfgText) note = window.__cfgText();
+      if (t.dataset.cfg && window.__cfgArea) { const ar = [...cform.querySelectorAll('input[name="build-mq"]')].find(i => i.value === window.__cfgArea()); if (ar) ar.checked = true; }
       if (note) { cform.elements['your-message'].value = note; cform.elements['your-message'].dispatchEvent(new Event('input')); }
       cform.hidden = false; $('#cfOk').hidden = true; show(r ? 2 : 1);
       $('#contatti').scrollIntoView({ behavior: 'smooth', block: 'start' });

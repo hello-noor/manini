@@ -167,6 +167,11 @@
   .tag.open{white-space:normal;width:280px;border-radius:18px;padding:10px 14px 12px 24px;z-index:9;background:rgba(8,14,24,.92);border-color:rgba(77,163,255,.5)}
   .tag.open .body{display:block}.tag.open i{transform:rotate(45deg);display:inline-block}
   .mini{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:12px;flex:none}
+  .cu{border:1px dashed rgba(77,163,255,.45);border-radius:16px;padding:12px 14px;background:rgba(77,163,255,.05)}
+  .cu-t{font-size:13.5px;font-weight:600}.cu-t small{display:block;font-weight:400;color:var(--dim);font-size:12px;margin-top:2px}
+  .cu-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .cu-g label{display:block;position:relative}.cu-g input{width:100%;font:600 15px Inter,sans-serif;color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:11px;padding:9px 9px 18px;outline:0}
+  .cu-g input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,163,255,.18)}.cu-g span{position:absolute;left:10px;bottom:4px;font:500 9.5px 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);pointer-events:none}
   .seg.roofs{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}
   .rinfo{font-size:14.5px;color:var(--dim);margin:2px 0 0;min-height:3.2em}
   .rinfo b{color:var(--ink);font-weight:600}
@@ -568,10 +573,13 @@
       <label class="row">Campate<input id="cfX" type="range" min="1" max="4" step="1" value="2"><output id="cfXo">2 × 20 m</output></label>
       <label class="row">Moduli<input id="cfZ" type="range" min="2" max="8" step="1" value="3"><output id="cfZo">3 × 7,5 m</output></label>
       <label class="row">Altezza<input id="cfH" type="range" min="6" max="12" step="1" value="9"><output id="cfHo">9 m</output></label>
+      <div class="cu"><div class="cu-t">Misure diverse? Scrivile qui <small>Il 3D si ferma al massimo, il preventivo no.</small></div>
+        <div class="cu-g"><label><input id="cuW" type="number" inputmode="decimal" min="1" max="5000" step="0.5" placeholder="40"><span>Larghezza m</span></label><label><input id="cuD" type="number" inputmode="decimal" min="1" max="5000" step="0.5" placeholder="22,5"><span>Profondità m</span></label><label><input id="cuH" type="number" inputmode="decimal" min="1" max="100" step="0.5" placeholder="9"><span>Altezza m</span></label></div>
+        <p class="rinfo" id="cuN" style="min-height:0;margin:6px 0 0"></p></div>
       <div class="read"><div><span>Superficie</span><strong id="cfA">—</strong></div><div><span>Pilastri</span><strong id="cfC">—</strong></div><div><span id="cfNl">Elementi</span><strong id="cfN">—</strong></div><div><span>Altezza libera</span><strong id="cfHh">—</strong></div></div>
       <a class="btn" href="#contatti" data-prefill="Nuova Realizzazione" data-cfg="1" style="text-align:center">Richiedi un preventivo</a>
     </div>
-    <p class="fine m-hide">Clicca le etichette sul modello per un approfondimento. Conteggi geometrici di un modulo tipo, non un preventivo.</p>
+    <p class="fine m-hide">Clicca le etichette sul modello per un approfondimento. Conteggi geometrici di massima, non un preventivo.</p>
   </div></div>
 </section>
 
