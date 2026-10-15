@@ -417,6 +417,23 @@ function buildSolai(ox) {
   m.setPi = th => { pi.geometry.dispose(); pi.geometry = extrudeXGeo(piShape(th), len); };
   m.setSolman = th => fill(so, th); m.setPluriman = th => fill(pl, th);
   m.widths = () => { const w = o => { o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o); return Math.round((b.max.z - b.min.z) * 100); }; return [w(pk[0]), w(pi), w(so), w(pl)]; };
+  // profilo in sezione dell'elemento, in alto nello spazio, mostrato in un riquadro a parte
+  const prof = new THREE.Group(); prof.position.set(0, 120, 0); m.g.add(prof); m.prof = prof;
+  m.setProfile = (idx, th) => {
+    while (prof.children.length) { const c = prof.children.pop(); c.traverse(o => o.geometry && o.geometry.dispose()); }
+    const grp = new THREE.Group(), LEN = 1.2;
+    const add = (geo, mat) => { const me = new THREE.Mesh(geo, mat || M.concrete); me.castShadow = me.receiveShadow = true; grp.add(me); return me; };
+    if (idx === 0) add(extrudeXGeo(pokerShape(th), LEN));
+    else if (idx === 1) add(extrudeXGeo(piShape(th), LEN));
+    else {
+      const cfg = idx === 2 ? { ribs: [.42, 2.08], wBox: .62, wFl: .84 } : { ribs: [.38, 1.25, 2.12], wBox: .42, wFl: .76 };
+      boxRibGeoms(th, cfg.ribs, cfg.wBox, cfg.wFl, LEN).forEach(([g]) => add(g));
+      const hb = th - .1, edges = [0, ...cfg.ribs.flatMap(c => [c - cfg.wFl / 2, c + cfg.wFl / 2]), 2.5];
+      for (let k = 0; k < edges.length; k += 2) { const a = edges[k], b2 = edges[k + 1]; if (b2 - a > .06) { const l = add(new THREE.BoxGeometry(LEN - .06, .035, b2 - a - .02), M.lam); l.position.set(0, hb + .05, (a + b2) / 2); } }
+    }
+    const bb = new THREE.Box3().setFromObject(grp), c = bb.getCenter(V3()); grp.position.set(-c.x, -c.y, -c.z); prof.add(grp);
+    prof.userData.r = bb.getSize(V3()).length() / 2;
+  };
   m.Z = Z;
   return m;
 }
@@ -661,15 +678,15 @@ const cfgOpts = () => {
   return o;
 };
 const mOndal = buildOndal(0, { rows: [0, 20, 40], nz: 3, colH: 9, R: 44, cap: 'both' });
-const mOndalP = buildOndal(STEP, { rows: [0, 32], nz: 2, colH: 10.5, walls: false, R: 38 });
-const mOndalN = buildOndal(STEP * 2, { rows: [0, 26], nz: 3, colH: 8.5, omega: true, walls: false, R: 40, cap: 'shed' });
-const mTau = buildTau(STEP * 3);
-const mPlan = buildPlan(STEP * 4);
-const mSolai = buildSolai(STEP * 5);
-let mCfg = buildOndal(STEP * 6, cfgOpts());
-const mSeis = buildSeismic(STEP * 7);
-const mConn = buildConnect(STEP * 8);
-const mGreen = buildOndal(STEP * 9, { rows: [0, 18, 36], nz: 4, colH: 8, walls: false, flat: true, roofKinds: ['pv', 'green'], R: 40 });
+const mOndalP = buildOndal(0, { rows: [0, 32], nz: 2, colH: 10.5, walls: false, R: 38 });
+const mOndalN = buildOndal(0, { rows: [0, 26], nz: 3, colH: 8.5, omega: true, walls: false, R: 40, cap: 'shed' });
+const mTau = buildTau(0);
+const mPlan = buildPlan(0);
+const mSolai = buildSolai(0);
+let mCfg = buildOndal(STEP * 1, cfgOpts());
+const mSeis = buildSeismic(STEP * 2);
+const mConn = buildConnect(STEP * 3);
+const mGreen = buildOndal(STEP * 4, { rows: [0, 18, 36], nz: 4, colH: 8, walls: false, flat: true, roofKinds: ['pv', 'green'], R: 40 });
 const models = [mOndal, mOndalP, mOndalN, mTau, mPlan, mSolai, mCfg, mSeis, mConn, mGreen];
 
 /* ---------- label texts (click to expand) ---------- */
@@ -720,20 +737,37 @@ function mkLabel(p, t) {
 /* ---------- beats (camera + labels) ---------- */
 const O = m => m.origin;
 const B = (m, c, d, az, el, labels = []) => ({ m, c: O(m).clone().add(c), d, az, el, labels: labels.map(([p, t]) => mkLabel(O(m).clone().add(V3(...p)), t)) });
+const SYS = {
+  ondal: B(mOndal, V3(24, 8.5, 9), 58, -62, 11, [[[12, 10.3, 15], 'Shed vetrato · luce naturale'], [[30, 9.2, 7.5], 'Tegoli · interasse 5,00–7,50 m'], [[0, 5, 22.5], 'Pilastri prefabbricati']]),
+  ondalp: B(mOndalP, V3(16, 6, 7.5), 74, -34, 18, [[[16, 11.6, 0], 'Luce fino a 32 m'], [[32, 5, 15], 'Maglia 25 × 25 m e oltre']]),
+  ondaln: B(mOndalN, V3(12, 9.5, 11), 66, -40, 16, [[[0, 11.4, 11], 'Trave Super-Omega'], [[12, 10.4, 7.5], 'Tegoli su appoggi bassi'], [[24, 6, 0], 'Fondazioni più piccole']]),
+  tau: B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua']]),
+  plan: B(mPlan, V3(0, 7.5, 0), 48, -42, 22, [[[-9, 4, 6], 'Pilastro'], [[9, 9.6, 0], 'Trave principale precompressa'], [[0, 11.2, -2.4], 'Trave secondaria a T'], [[-5, 11.2, 6], 'Manto isolante continuo']]),
+  solai: B(mSolai, V3(5, 1.6, -5.8), 17, 70, 16, [[[5, 1.5, -5.8], 'Poker'], [[5, 1.8, -1.9], 'PI-Greco'], [[5, 1.9, 1.1], 'Solman'], [[5, 1.9, 4.2], 'Pluriman']]),
+};
+const SYSM = { ondal: mOndal, ondalp: mOndalP, ondaln: mOndalN, tau: mTau, plan: mPlan, solai: mSolai };
+let sysSel = 'ondal';
 const beats = [
   B(mOndal, V3(14, 4.5, 11), 108, -36, 21),
-  B(mOndal, V3(24, 8.5, 9), 58, -62, 11, [[[12, 10.3, 15], 'Shed vetrato · luce naturale'], [[30, 9.2, 7.5], 'Tegoli · interasse 5,00–7,50 m'], [[0, 5, 22.5], 'Pilastri prefabbricati']]),
-  B(mOndalP, V3(16, 6, 7.5), 74, -34, 18, [[[16, 11.6, 0], 'Luce fino a 32 m'], [[32, 5, 15], 'Maglia 25 × 25 m e oltre']]),
-  B(mOndalN, V3(12, 9.5, 11), 66, -40, 16, [[[0, 11.4, 11], 'Trave Super-Omega'], [[12, 10.4, 7.5], 'Tegoli su appoggi bassi'], [[24, 6, 0], 'Fondazioni più piccole']]),
-  B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua']]),
-  B(mPlan, V3(0, 7.5, 0), 48, -42, 22, [[[-9, 4, 6], 'Pilastro'], [[9, 9.6, 0], 'Trave principale precompressa'], [[0, 11.2, -2.4], 'Trave secondaria a T'], [[-5, 11.2, 6], 'Manto isolante continuo']]),
-  B(mSolai, V3(5, 1.6, -5.8), 17, 70, 16, [[[5, 1.5, -5.8], 'Poker'], [[5, 1.8, -1.9], 'PI-Greco'], [[5, 1.9, 1.1], 'Solman'], [[5, 1.9, 4.2], 'Pluriman']]),
+  SYS.ondal,
   B(mCfg, V3(20, 5, 11), 80, -36, 22),
   B(mSeis, V3(0, 4.5, 0), 44, -14, 10, [[[5.0, 3.9, 2.8], 'Jawfix®'], [[-3, 3.6, 2.9], 'AllDrift®']]),
   B(mConn, V3(10.5, 6.5, 2), 50, -26, 12, [[[0, 9.4, 0], 'Sensori nel pilastro'], [[1.2, 11.9, 0], 'Trasmettitore sul tetto'], [[8, 16.8, -3], 'Cloud'], [[8.5, 8.6, 7], 'Control Room']]),
   B(mGreen, V3(18, 4, 15), 64, -40, 24, [[[9, 9.8, 4], 'Fotovoltaico senza forare il manto'], [[27, 9.2, 11], 'Tetto verde · deflusso −70%']]),
 ];
 beats.forEach((b, i) => b.m.beat = i);
+function selectSystem(k, instant) {
+  if (!SYS[k]) return;
+  Object.values(SYS).forEach(o => o.labels.forEach(l => l.el.classList.remove('on')));
+  closeTags();
+  const old = SYSM[sysSel]; sysSel = k; beats[1] = SYS[k];
+  if (old !== SYSM[k]) { old.t = 0; old.target = 0; old.g.visible = false; SYSM[k].t = REDUCED ? 1 : 0; }
+  document.querySelectorAll('#sysnav button').forEach(b => b.classList.toggle('on', b.dataset.sys === k));
+  const nb = document.querySelector(`#sysnav button[data-sys="${k}"]`), nv = $('#sysnav'); if (nb && nv) nv.scrollTo({ left: nb.offsetLeft - nv.clientWidth / 2 + nb.clientWidth / 2, behavior: 'smooth' });
+  document.querySelectorAll('.sysv').forEach(v => v.hidden = v.dataset.sys !== k);
+  document.body.dataset.sys = k;
+}
+window.__selectSystem = selectSystem;
 
 /* ---------- scroll mapping ---------- */
 let anchors = [], vw = innerWidth, vh = innerHeight, ranges = [], secR = {};
@@ -771,10 +805,9 @@ let mx = 0, my = 0;
 addEventListener('pointermove', e => { mx = (e.clientX / vw - .5) * 2; my = (e.clientY / vh - .5) * 2; });
 const fmt = (n, d = 0) => n.toLocaleString('it-IT', { minimumFractionDigits: d, maximumFractionDigits: d });
 
-/* ---------- UI: system tabs + replay ---------- */
-const tabs = $('#systabs');
-tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.b) document.querySelector(`[data-beat="${b.dataset.b}"]`).scrollIntoView({ behavior: 'smooth', block: 'center' }); });
-document.querySelectorAll('.replay').forEach(b => b.addEventListener('click', () => { beats[+b.dataset.b].m.t = 0; }));
+/* ---------- UI: system selector + replay ---------- */
+$('#sysnav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) selectSystem(b.dataset.sys); });
+document.querySelectorAll('.replay').forEach(b => b.addEventListener('click', () => { SYSM[b.dataset.sys || sysSel].t = 0; }));
 
 /* ---------- UI: Ondal sun (animated) + light shafts ---------- */
 const sun = { play: true, h: 8 };
@@ -870,7 +903,7 @@ function fireUpdate(dt) {
 $('#capT').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; $('#capT').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   const curve = b.dataset.c === 'curve'; mOndal.hidden[curve ? 'add' : 'delete']('shed'); mOndal.hidden[curve ? 'delete' : 'add']('curve');
-  const lb = beats[1].labels[0].el.querySelector('b'); lb.textContent = curve ? 'Cappella curva · lucernari a raso' : 'Shed vetrato · luce naturale';
+  const lb = SYS.ondal.labels[0].el.querySelector('b'); lb.textContent = curve ? 'Cappella curva · lucernari a raso' : 'Shed vetrato · luce naturale';
 });
 const mgS = $('#mgS');
 function mgUpdate() {
@@ -879,7 +912,7 @@ function mgUpdate() {
   $('#mgC').textContent = c; $('#mgD').textContent = c === c0 ? '0%' : '−' + Math.round((1 - c / c0) * 100) + '%';
   const nx = Math.ceil(96 / S2), nz = Math.ceil(48 / 7.5);
   $('#mgN').textContent = `Il modello mostra una campata. Capannone esempio 96 × 48 m: ${nx} ${nx === 1 ? 'campata' : 'campate'} da ${S2} m × ${nz} moduli da 7,5 m = ${nx + 1} × ${nz + 1} = ${c} pilastri. Conteggio geometrico.`;
-  const ox = mOndalP.origin.x; beats[2].c.x = ox + S2 / 2; beats[2].labels[0].p.x = ox + S2 / 2; beats[2].labels[1].p.x = ox + S2; beats[2].labels[0].el.querySelector('b').textContent = S2 >= 32 ? 'Luce fino a 32 m' : `Luce ${S2} m`;
+  const ox = mOndalP.origin.x; SYS.ondalp.c.x = ox + S2 / 2; SYS.ondalp.labels[0].p.x = ox + S2 / 2; SYS.ondalp.labels[1].p.x = ox + S2; SYS.ondalp.labels[0].el.querySelector('b').textContent = S2 >= 32 ? 'Luce fino a 32 m' : `Luce ${S2} m`;
 }
 mgS.addEventListener('input', mgUpdate); mgUpdate();
 
@@ -892,11 +925,11 @@ setInterval(() => { const e = $('#tuPool'); if (e) e.textContent = mTau.flat ? M
 $('#tuPv').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); const on = b.classList.contains('on'); mTau.pv.target = on ? 1 : 0; $('#tuP').textContent = on ? `${mTau.pv.n} pannelli · ${fmt(mTau.pv.area * .2)} kWp` : '—'; });
 
 /* ---------- UI: Plan explode + joint detail ---------- */
-const plLabMain = beats[5].labels, PO = mPlan.origin;
+const plLabMain = SYS.plan.labels, PO = mPlan.origin;
 const plLabDet = [[V3(-8.8, 10.7, 0), 'Incastro trave a T'], [V3(-8.6, 9.8, 0), 'Appoggio in neoprene'], [V3(-8.85, 9.35, 0), 'Spinotti in acciaio']].map(([p, t]) => mkLabel(PO.clone().add(p), t));
 $('#plEx').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; $('#plEx').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  const x = +b.dataset.x, bt = beats[5];
+  const x = +b.dataset.x, bt = SYS.plan;
   mPlan.exT = x === 1 ? 1 : 0; mPlan.ex2T = x === 2 ? 1 : 0; mPlan.det = x === 2; mPlan.detGroup.visible = x === 2;
   if (x === 0) { bt.d = 48; bt.az = -42; bt.el = 22; bt.c.copy(PO).add(V3(0, 7.5, 0)); }
   if (x === 1) { bt.d = 66; bt.az = -42; bt.el = 22; bt.c.copy(PO).add(V3(0, 13, 0)); }
@@ -919,12 +952,12 @@ const SOC = [
   { w: 250, min: 0, max: 2, step: 1, val: 1, th: v => [.6, .75, .9][v], txt: v => [60, 75, 90][v] + ' cm', fn: 'setPluriman', lab: 'Pluriman' },
 ];
 const soT = $('#soT'); let soCur = 0;
-const soLab = (i, th) => { const c = SOC[i], lb = beats[6].labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)} · largo ${c.w}`; lb.p.y = 1.1 + th + .35; };
-function soApply() { const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v); mSolai[c.fn](th); $('#soTo').textContent = c.txt(v); $('#soW').textContent = c.w + ' cm'; $('#soM').textContent = mSolai.widths()[soCur] + ' cm, 1 elemento'; soLab(soCur, th); }
+const soLab = (i, th) => { const c = SOC[i], lb = SYS.solai.labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)} · largo ${c.w}`; lb.p.y = 1.1 + th + .35; };
+function soApply() { const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v); mSolai[c.fn](th); mSolai.setProfile(soCur, th); $('#pvT').textContent = 'Profilo · ' + c.lab; $('#pvW').textContent = 'largo ' + c.w + ' cm'; $('#pvH').textContent = 'spessore ' + c.txt(v).replace('≈ ', ''); $('#soTo').textContent = c.txt(v); $('#soW').textContent = c.w + ' cm'; $('#soM').textContent = mSolai.widths()[soCur] + ' cm, 1 elemento'; soLab(soCur, th); }
 function soSet(i) {
   soCur = i; const c = SOC[i];
   soT.min = c.min; soT.max = c.max; soT.step = c.step; soT.value = c.val;
-  beats[6].c.z = mSolai.origin.z + SO[i].z; $('#soI').innerHTML = SO[i].t; soApply();
+  SYS.solai.c.z = mSolai.origin.z + SO[i].z; $('#soI').innerHTML = SO[i].t; soApply();
 }
 soT.addEventListener('input', soApply);
 $('#soSel').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#soSel').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); soSet(+b.dataset.s); });
@@ -952,8 +985,8 @@ const ROOFLAB = {
 };
 function cfgLabels() {
   const SPN = CF.roof === 'new' ? 26 : 20, W = CF.x * SPN, D = CF.z * 7.5, c = mCfg.origin, P = (x, y, z) => c.clone().add(V3(x, y, z)), r = ROOFLAB[CF.roof], y = CF.h + 2.6;
-  beats[7].labels.forEach(l => l.el.remove());
-  beats[7].labels = [mkLabel(P(W * .45, y, D * .5), r[0]), mkLabel(P(W * .85, y - .6, D * .15), r[1]), mkLabel(P(0, CF.h * .55, D), 'Pilastri prefabbricati')];
+  beats[2].labels.forEach(l => l.el.remove());
+  beats[2].labels = [mkLabel(P(W * .45, y, D * .5), r[0]), mkLabel(P(W * .85, y - .6, D * .15), r[1]), mkLabel(P(0, CF.h * .55, D), 'Pilastri prefabbricati')];
 }
 window.__cfgText = () => { const v = cuVals(), SPN = v.SPN, nm = { shed: 'Ondal shed', curve: 'Ondal cappella curva', new: 'Ondal New', pv: 'Ondal Powershed', flat: 'Ondal piano con verde e fotovoltaico', tau: 'TAU', plan: 'Manini Plan' }[CF.roof]; return `Configurazione scelta sul sito: ${nm}${manto && CF.roof !== 'flat' ? ', manto ' + manto : ''}. Misure richieste: larghezza ${fmt(v.W)} m × profondità ${fmt(v.D)} m, altezza ${fmt(v.H)} m (circa ${fmt(v.W * v.D)} m²).${(v.W > 4 * SPN || v.D > 60 || v.H > 12) ? ' Le misure superano il massimo mostrato dal modello 3D.' : ''}`; };
 const CU = { W: 0, D: 0, H: 0 };
@@ -976,10 +1009,10 @@ function cfgUI() {
 }
 function cfgRebuild() {
   const old = mCfg; scene.remove(old.g); old.g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-  const nm = buildOndal(STEP * 6, cfgOpts()); nm.t = REDUCED ? 1 : 0; nm.beat = 7; nm.target = 1;
-  models[models.indexOf(old)] = nm; beats[7].m = nm; mCfg = nm;
+  const nm = buildOndal(STEP * 1, cfgOpts()); nm.t = REDUCED ? 1 : 0; nm.beat = 2; nm.target = 1;
+  models[models.indexOf(old)] = nm; beats[2].m = nm; mCfg = nm;
   const SPN = CF.roof === 'new' ? 26 : 20, W = CF.x * SPN, D = CF.z * 7.5;
-  beats[7].c.copy(nm.origin).add(V3(W / 2, CF.h * .55, D / 2)); beats[7].d = 40 + (W + D) * .85;
+  beats[2].c.copy(nm.origin).add(V3(W / 2, CF.h * .55, D / 2)); beats[2].d = 40 + (W + D) * .85;
   cfgLabels(); cfgUI(); mantoApply();
 }
 const MANTI = { lamiera: { c: 0xaab6c2, m: .95, r: .32, t: '<b>Lamiera.</b> Lastre curve in lamiera zincata preverniciata, con fissaggi meccanici e giunti che seguono la dilatazione. Coibentazione con materassino in lana di vetro o di roccia, o pannelli rigidi di polistirene.' }, inox: { c: 0xf4f7fa, m: 1, r: .12, t: '<b>Acciaio inox.</b> Lastre sagomate in acciaio inox con fissaggi e giunti idonei, per un’impermeabilizzazione che dura.' }, guaina: { c: 0x3b3e43, m: 0, r: .95, t: '<b>Guaina.</b> Membrane elastomeriche protette da scaglie di ardesia, colorabili. I colori chiari riflettono i raggi solari e riducono l’isola di calore.' }, tpo: { c: 0xffffff, m: 0, r: .6, t: '<b>TPO.</b> Membrana sintetica in poliolefina termoplastica, resistente ai raggi UV, con prestazioni energetiche alte e lunga durata.' } };
@@ -1013,7 +1046,7 @@ $('#swA').addEventListener('change', e => { S.all = e.target.checked; S.reset();
 seI.addEventListener('input', () => { const M = +seI.value; S.I = 1 + (M - 4) * 2.25; $('#seIo').textContent = magText(M); });
 seI.dispatchEvent(new Event('input'));
 $('#seGo').addEventListener('click', () => { S.demo = false; $('#seMov').classList.remove('on'); S.start(); });
-const so8 = mSeis.origin, bt8 = beats[8], VIEWS = { all: [0, 4.5, 0, 44, -14, 10], jaw: [5.4, 5.6, 2.5, 12, -20, -6], alld: [-3.2, 5.9, 2.5, 9, -22, -12] };
+const so8 = mSeis.origin, bt8 = beats[3], VIEWS = { all: [0, 4.5, 0, 44, -14, 10], jaw: [5.4, 5.6, 2.5, 12, -20, -6], alld: [-3.2, 5.9, 2.5, 9, -22, -12] };
 function seView(k) { const v = VIEWS[k]; bt8.c.copy(so8).add(V3(v[0], v[1], v[2])); bt8.d = v[3]; bt8.az = v[4]; bt8.el = v[5]; document.querySelectorAll('#seView button').forEach(b => b.classList.toggle('on', b.dataset.v === k)); }
 $('#seView').addEventListener('click', e => { const b = e.target.closest('button'); if (b) seView(b.dataset.v); });
 $('#seMov').addEventListener('click', e => { S.demo = !S.demo; e.currentTarget.classList.toggle('on', S.demo); S.reset(); if (!S.demo) S.dt = 0; });
@@ -1081,7 +1114,9 @@ function grUpdate(dt) {
 }
 
 /* ---------- loop ---------- */
-let fS = 0, last = performance.now(), time = 0, activeBeat = 0, labelsShown = false;
+const pvEl = $('#profview'), cam2 = new THREE.PerspectiveCamera(32, 1.3, .05, 100), PVBG = new THREE.Color(0x0b1626);
+let fS = 0, last = performance.now(), time = 0, activeBeat = 0, labelsShown = false, camInit = false;
+const camSm = { c: V3(), d: 50, az: 0, el: 10 };
 let gate = !!window.__splashDone || !document.getElementById('splash');
 document.addEventListener('splashdone', () => { gate = true; });
 const camPos = V3(), camTgt = V3(), tmp = V3();
@@ -1098,17 +1133,25 @@ function tick(now) {
   fS += (f - fS) * (1 - Math.exp(-dt * 4.5));
   const i = clamp(Math.floor(fS), 0, beats.length - 1), j = Math.min(i + 1, beats.length - 1), k = sm(clamp(fS - i, 0, 1));
   const A = beats[i], Bt = beats[j];
-  camTgt.lerpVectors(A.c, Bt.c, k);
-  const d = lerp(A.d, Bt.d, k) * (vw < 900 ? 1.55 : 1), az = lerp(A.az, Bt.az, k) + mx * 6 + (REDUCED ? 0 : Math.sin(time * .15) * 4), el = lerp(A.el, Bt.el, k) - my * 2;
+  tmp.lerpVectors(A.c, Bt.c, k);
+  const dT = lerp(A.d, Bt.d, k) * (vw < 900 ? 1.55 : 1), azT = lerp(A.az, Bt.az, k), elT = lerp(A.el, Bt.el, k);
+  if (!camInit) { camSm.c.copy(tmp); camSm.d = dT; camSm.az = azT; camSm.el = elT; camInit = true; }
+  const cs = 1 - Math.exp(-dt * 5.5);
+  camSm.c.lerp(tmp, cs); camSm.d += (dT - camSm.d) * cs; camSm.az += (azT - camSm.az) * cs; camSm.el += (elT - camSm.el) * cs;
+  camTgt.copy(camSm.c);
+  const d = camSm.d, az = camSm.az + mx * 6 + (REDUCED ? 0 : Math.sin(time * .15) * 4), el = camSm.el - my * 2;
   const introK = eo(clamp(intro, 0, 1));
   sph(camTgt, d * (1 + (1 - introK) * .35), az + (1 - introK) * 30, el + (1 - introK) * 6, camPos);
   camera.position.copy(camPos); camera.lookAt(camTgt);
-  models.forEach(m => { m.target = m.beat !== undefined && Math.abs(fS - m.beat) < 1.15 ? 1 : 0; });
-  mOndal.target = gate && Math.abs(fS) < 2.2 ? 1 : 0;
+  const sysModels = Object.values(SYSM);
+  models.forEach(m => { if (!sysModels.includes(m)) m.target = m.beat !== undefined && Math.abs(fS - m.beat) < 1.15 ? 1 : 0; });
+  mOndal.target = gate && (fS < .5 || (sysSel === 'ondal' && fS < 2.2)) ? 1 : 0;
+  Object.entries(SYSM).forEach(([k, m]) => { if (m !== mOndal) m.target = sysSel === k && fS >= .5 && fS < 2.2 ? 1 : 0; });
+  models.forEach(m => { m.g.visible = m.t > .004 || m.target > 0; });
   if (!REDUCED && gate && intro < 1) { intro += dt * .35; }
   // lights follow (the sun slider drives the key light on the Ondal step)
   if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snTs.forEach(t => t.value = sun.h); }
-  const sw1 = clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1), sw2 = clamp(1 - Math.abs(fS - 2) * 1.6, 0, 1), sw = Math.max(sw1, sw2), sv = sunVec(sun.h), sm0 = sw2 > sw1 ? mOndalP : mOndal;
+  const sw1 = sysSel === 'ondal' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw2 = sysSel === 'ondalp' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw = Math.max(sw1, sw2), sv = sunVec(sun.h), sm0 = sw2 > sw1 ? mOndalP : mOndal;
   key.position.set(camTgt.x - 26, camTgt.y + 44, camTgt.z + 30).lerp(tmp.copy(camTgt).addScaledVector(sv.v, 60), sw);
   key.intensity = lerp(2.3, .9 + 2.6 * Math.sin(sv.deg * Math.PI / 180), sw);
   key.color.setHex(0xfff0dd).lerp(new THREE.Color(0xffc48a), sw * (1 - clamp((sv.deg - 10) / 30, 0, 1)));
@@ -1120,9 +1163,6 @@ function tick(now) {
   if (sw > .02) sunUI(sv);
   rim.position.set(camTgt.x + 30, camTgt.y + 20, camTgt.z - 34); rim.target.position.copy(camTgt);
   const ab = Math.round(fS); if (ab !== activeBeat) { activeBeat = ab; closeTags(); }
-  const cy0 = scrollY + vh / 2;
-  tabs.classList.toggle('on', !!secR[1] && !!secR[7] && cy0 > secR[1][0] && cy0 < secR[7][1]);
-  tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.b === ab));
   const run = inView() || Math.abs(fS - Math.round(fS)) > .02;
   if (run) {
     models.forEach(m => m.update(dt));
@@ -1145,6 +1185,21 @@ function tick(now) {
     });
     labelsShown = true;
     renderer.render(scene, camera);
+    // riquadro del profilo (solo con Solai selezionato)
+    const profOn = sysSel === 'solai' && Math.abs(fS - 1) < .5 && mSolai.t > .6;
+    pvEl.classList.toggle('on', profOn);
+    if (profOn) {
+      if (vw > 900) { pvEl.style.cssText = `right:28px;bottom:28px;width:${Math.min(380, vw * .27)}px;height:${Math.min(290, vh * .34)}px`; } else { pvEl.style.cssText = `right:10px;top:64px;width:${Math.min(190, vw * .5)}px;height:${Math.min(140, vh * .17)}px`; }
+      const r = pvEl.getBoundingClientRect(), rr = mSolai.prof.userData.r || 1.5;
+      cam2.aspect = r.width / r.height; cam2.updateProjectionMatrix();
+      mSolai.prof.getWorldPosition(tmp);
+      const dd = rr / Math.sin(cam2.fov * Math.PI / 360) * 1.05, a2 = (35 + Math.sin(time * .35) * 28) * Math.PI / 180, e2 = 20 * Math.PI / 180;
+      cam2.position.set(tmp.x + dd * Math.cos(e2) * Math.sin(a2 + 1.2), tmp.y + dd * Math.sin(e2), tmp.z + dd * Math.cos(e2) * Math.cos(a2 + 1.2)); cam2.lookAt(tmp);
+      const bg0 = scene.background, fog0 = scene.fog; scene.background = PVBG; scene.fog = null;
+      renderer.setScissorTest(true); renderer.setViewport(r.left, vh - r.bottom, r.width, r.height); renderer.setScissor(r.left, vh - r.bottom, r.width, r.height);
+      renderer.render(scene, cam2);
+      renderer.setScissorTest(false); renderer.setViewport(0, 0, vw, vh); scene.background = bg0; scene.fog = fog0;
+    }
   } else if (labelsShown) { labelHost.querySelectorAll('.tag.on').forEach(x => x.classList.remove('on')); closeTags(); labelsShown = false; }
 }
 measure();

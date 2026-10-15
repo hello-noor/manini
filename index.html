@@ -465,6 +465,18 @@
   #systabs .tab-next{background:rgba(77,163,255,.16);color:#bfe0ff;margin-left:4px}
   .backsys{display:inline-block;margin:6px 0 0;font:500 13px Inter,sans-serif;color:var(--accent);background:none;border:0;cursor:pointer;padding:4px 0}
   @media(max-width:560px){.fork{grid-template-columns:1fr;gap:10px}.fk{padding:13px 14px}.fk .fd{font-size:13px}.fk b{font-size:17px}}
+  .sysnav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:-4px -4px 16px;padding:4px;position:sticky;top:-1px;z-index:3;background:linear-gradient(180deg,rgba(14,17,22,.96),rgba(14,17,22,.8));border-radius:14px}
+  .sysnav::-webkit-scrollbar{display:none}
+  @media(min-width:901px){.sysnav{flex-wrap:wrap;overflow:visible}}
+  .sysnav button{flex:none;font:600 13px Inter,sans-serif;color:var(--dim);background:rgba(255,255,255,.05);border:1px solid transparent;border-radius:99px;padding:8px 13px;cursor:pointer;transition:.25s;white-space:nowrap}
+  .sysnav button:hover{color:var(--ink)}.sysnav button.on{background:var(--brand);color:#fff;border-color:#4da3ff}
+  .sysv[hidden]{display:none}.sysv{animation:stepIn .45s cubic-bezier(.2,.8,.2,1)}
+  .sysblock{min-height:135svh}
+  #profview{position:fixed;z-index:4;pointer-events:none;border:1px solid rgba(120,170,230,.45);border-radius:6px;opacity:0;transition:opacity .4s;box-shadow:0 18px 60px -20px rgba(0,0,0,.8)}
+  #profview.on{opacity:1}
+  #profview .pc{position:absolute;left:10px;top:8px;right:10px;font:500 10.5px 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#cfe3ff;text-shadow:0 1px 4px #000}
+  #profview .pd{position:absolute;left:10px;right:10px;bottom:8px;display:flex;justify-content:space-between;font:600 12px Inter,sans-serif;color:#fff;text-shadow:0 1px 4px #000}
+  #profview .pd i{font-style:normal;color:var(--accent)}
   .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
   #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
@@ -472,7 +484,7 @@
 </head>
 <body>
 <div id="splash" aria-hidden="true"><div class="sp-in"><svg viewBox="0 0 400 345" width="132" height="114" fill="#fff"><path class="sb" style="--i:0" d="M17 0H140L200 47L260 0H383V75H260L200 107L140 75H17Z"/><path class="sb" style="--i:1" d="M17 84H140L200 116L260 84H383V159H260L200 191L140 159H17Z"/><path class="sb" style="--i:2" d="M17 168H140L200 200L260 168H383V243H260L200 275L140 243H17Z"/><path class="sb" style="--i:3" d="M17 252H140L200 284L260 252H383V327H260L200 343L140 327H17Z"/></svg><div class="sw"><b>MANINI</b><i>PREFABBRICATI</i></div></div></div>
-<canvas id="gl"></canvas><div id="nogl"></div><div id="labels"></div>
+<canvas id="gl"></canvas><div id="profview" aria-hidden="true"><div class="pc" id="pvT">Profilo in sezione</div><div class="pd"><span id="pvW"></span><i id="pvH"></i></div></div><div id="nogl"></div><div id="labels"></div>
 
 <header class="bar"><a class="brand" href="#top" aria-label="Manini Prefabbricati"><img src="assets/manini-mark-white.svg" alt="" width="26" height="22"><span><b>MANINI</b><i>PREFABBRICATI</i></span></a><nav><a href="#sistemi">Sistemi</a><a href="#sicurezza">Sicurezza</a><a href="#smart">Smart</a><a href="#sostenibilita">Sostenibilità</a><a href="#service">Service</a><a href="#mappa">Realizzazioni</a><a class="go" href="#contatti">Contatti</a></nav><button class="burger" id="burger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button></header>
 <div id="menu" aria-hidden="true">
@@ -480,8 +492,8 @@
     <div class="mn-h">Vai a</div>
     <a href="#top" data-m>Inizio</a>
     <div class="mn-g">Sistemi</div>
-    <div class="mn-sub"><a href="#" data-b="1">Ondal</a><a href="#" data-b="2">Ondal+</a><a href="#" data-b="3">Ondal New</a><a href="#" data-b="4">TAU</a><a href="#" data-b="5">Manini Plan</a><a href="#" data-b="6">Solai</a><a href="#" data-b="7">Tutti i tetti</a></div>
-    <a href="#" data-jump="7" data-m>Vai al tuo capannone</a>
+    <div class="mn-sub"><a href="#" data-sys="ondal">Ondal</a><a href="#" data-sys="ondalp">Ondal+</a><a href="#" data-sys="ondaln">Ondal New</a><a href="#" data-sys="tau">TAU</a><a href="#" data-sys="plan">Manini Plan</a><a href="#" data-sys="solai">Solai</a><a href="#" data-jump="2">Il tuo capannone</a></div>
+    <a href="#" data-jump="2" data-m>Vai al tuo capannone</a>
     <a href="#perche" data-m>Perché Manini</a>
     <a href="#sicurezza" data-m>Sicurezza sismica</a>
     <a href="#connect" data-m>Manini Connect</a>
@@ -494,7 +506,6 @@
     <a href="#contatti" data-m class="cta">Contatti</a>
   </div>
 </div>
-<nav id="systabs" aria-label="Sistemi"><button data-b="1">Ondal</button><button data-b="2">Ondal+</button><button data-b="3">Ondal New</button><button data-b="4">TAU</button><button data-b="5">Manini Plan</button><button data-b="6">Solai</button><button data-b="7">Tutti i tetti</button><button class="tab-next" data-jump="7">Salta al tuo capannone ›</button></nav>
 
 <main>
 <!-- HERO -->
@@ -506,7 +517,7 @@
     <p class="lead">Pilastri, travi e coperture nascono in fabbrica, dove tutto si misura e nulla si improvvisa. In cantiere arrivano finiti: tempi certi, più luce, più sicurezza. <span class="nb"><strong>10&nbsp;milioni&nbsp;di&nbsp;m²</strong>&nbsp;costruiti&nbsp;dal&nbsp;1962.</span></p>
     <div class="fork">
       <a class="fk" href="#sistemi"><span class="fn">01</span><b>Esplora i sistemi</b><span class="fd">Ondal, TAU, Manini Plan, Solai e le prove sismiche, in 3D.</span><i>Parti da qui ›</i></a>
-      <a class="fk alt" href="#" data-jump="7"><span class="fn">02</span><b>Vai al tuo capannone</b><span class="fd">Scegli tetto e misure e richiedi un preventivo.</span><i>Salta alla configurazione ›</i></a>
+      <a class="fk alt" href="#" data-jump="2"><span class="fn">02</span><b>Vai al tuo capannone</b><span class="fd">Scegli tetto e misure e richiedi un preventivo.</span><i>Salta alla configurazione ›</i></a>
     </div>
     <p class="fkn">Puoi sempre tornare indietro: il menu in alto porta a ogni sistema.</p>
   </div>
@@ -514,8 +525,10 @@
 </section>
 
 <!-- SISTEMI -->
-<section id="sistemi">
-  <div class="s3d step" data-beat="1"><div class="card rv">
+<section id="sistemi" class="s3d tall sysblock" data-beat="1">
+  <div class="stick"><div class="card sysc" id="syscard">
+<div class="sysnav" id="sysnav" role="tablist" aria-label="Sistemi"><button role="tab" data-sys="ondal" class="on">Ondal</button><button role="tab" data-sys="ondalp">Ondal+</button><button role="tab" data-sys="ondaln">Ondal New</button><button role="tab" data-sys="tau">TAU</button><button role="tab" data-sys="plan">Manini Plan</button><button role="tab" data-sys="solai">Solai</button></div>
+<div class="sysv" data-sys="ondal">
     <div class="eyebrow">Sistema 01</div><div class="sysname">Ondal</div><div class="syssub">Copertura in c.a. · piana o shed</div>
     <h2 class="t">La copertura che porta la luce dentro.</h2>
     <p class="lead" style="font-size:16px">Progettata, prodotta e impermeabilizzata in fabbrica. Piana o a shed, anche insieme sullo stesso tetto. Clicca le etichette sul modello per approfondire.</p>
@@ -528,9 +541,9 @@
       <div class="seg" id="fire"><button data-r="60">Fuoco R60</button><button data-r="120">R120</button><button data-r="180">R180</button></div>
       <div class="status" id="fireS">Prova al fuoco: scegli una classe.</div>
     </div>
-    <button class="replay" data-b="1">↻ Rimonta</button>
-  </div></div>
-  <div class="s3d step" data-beat="2"><div class="card rv">
+    <button class="replay" data-sys="ondal">↻ Rimonta</button>
+  </div>
+<div class="sysv" data-sys="ondalp" hidden>
     <div class="eyebrow">Sistema 02</div><div class="sysname">Ondal+</div><div class="syssub">Grandi luci · grandi maglie</div>
     <h2 class="t">Più luce. Meno fondazioni.</h2>
     <p class="lead m-hide" style="font-size:16px">Ondal+ porta il sistema a luci e maglie di pilastri più grandi: più spazio utile in pianta e meno plinti da costruire.</p>
@@ -543,17 +556,17 @@
       <div class="read"><div><span>Pilastri</span><strong id="mgC">32</strong></div><div><span>Rispetto a 12 m</span><strong id="mgD">−56%</strong></div></div>
     </div>
     <p class="fine" id="mgN"></p>
-    <button class="replay" data-b="2">↻ Rimonta</button>
-  </div></div>
-  <div class="s3d step" data-beat="3"><div class="card rv">
+    <button class="replay" data-sys="ondalp">↻ Rimonta</button>
+  </div>
+<div class="sysv" data-sys="ondaln" hidden>
     <div class="eyebrow">Sistema 03</div><div class="sysname">Ondal New</div><div class="syssub">Trave Super-Omega · grandi maglie</div>
     <h2 class="t">Più leggera. Con fondazioni più piccole.</h2>
     <p class="lead m-hide" style="font-size:16px">Una variante di Ondal che mantiene i requisiti e le forme dei manufatti portanti, ma risponde a esigenze di progetto diverse. I tegoli si appoggiano alla base della trave, non sopra.</p>
     <ul class="chips"><li>Trave <b>Super-Omega</b></li><li>Interasse variabile fino a <b>7,50 m</b></li><li>Lucernari <b>a raso</b> o <b>shed</b></li></ul>
     <div class="ctl"><div class="read"><div><span>Carroponti</span><strong style="font-size:16px">senza vie di corsa</strong></div><div><span>Fissaggi</span><strong style="font-size:16px">antisismici</strong></div></div></div>
-    <button class="replay" data-b="3">↻ Rimonta</button>
-  </div></div>
-  <div class="s3d step" data-beat="4"><div class="card rv">
+    <button class="replay" data-sys="ondaln">↻ Rimonta</button>
+  </div>
+<div class="sysv" data-sys="tau" hidden>
     <div class="eyebrow">Sistema 04</div><div class="sysname">TAU</div><div class="syssub">Estradosso parabolico · intradosso piano</div>
     <h2 class="t">Piana e inclinata. Insieme.</h2>
     <p class="lead m-hide" style="font-size:16px">Travi per luci da 12 a 32 m con estradosso parabolico e intradosso rettilineo. Copre tutto con una cappella curva, con lucernari a raso o shed. Il telaio dei pannelli fotovoltaici si fissa senza forare.</p>
@@ -567,17 +580,17 @@
       <div class="read"><div><span>Da smaltire</span><strong id="tuQ">10,7 L/s</strong></div><div><span>Superficie</span><strong>480 m²</strong></div><div style="grid-column:1/-1"><span>Acqua ferma sul tetto</span><strong id="tuPool">0 cm</strong></div></div>
     </div>
     <p class="fine m-hide">Fotovoltaico: stima a 0,2 kWp per m² di pannello. Portata = pioggia × superficie.</p>
-    <button class="replay" data-b="4">↻ Rimonta</button>
-  </div></div>
-  <div class="s3d step" data-beat="5"><div class="card rv">
+    <button class="replay" data-sys="tau">↻ Rimonta</button>
+  </div>
+<div class="sysv" data-sys="plan" hidden>
     <div class="eyebrow">Sistema 05</div><div class="sysname">Manini Plan</div><div class="syssub">Pilastri · travi precompresse</div>
     <h2 class="t">La struttura che regge tutto.</h2>
     <p class="lead m-hide" style="font-size:16px">Pilastri, travi principali in c.a. precompresso e travi secondarie a T, anch'esse precompresse. Un manto continuo isola e impermeabilizza.</p>
     <ul class="chips"><li>Industria</li><li>Esposizione</li><li>Commercio</li><li>Isolamento <b>su misura</b></li></ul>
     <div class="ctl"><div class="seg tog" id="plEx"><button data-x="0" class="on">Montato</button><button data-x="1">Esploso</button><button data-x="2">Incastro</button></div></div>
-    <button class="replay" data-b="5">↻ Rimonta</button>
-  </div></div>
-  <div class="s3d step" data-beat="6"><div class="card rv">
+    <button class="replay" data-sys="plan">↻ Rimonta</button>
+  </div>
+<div class="sysv" data-sys="solai" hidden>
     <div class="eyebrow">Sistema 06</div><div class="sysname">Solai</div><div class="syssub">Poker · PI-Greco · Solman · Pluriman</div>
     <h2 class="t">Un solaio per ogni piano.</h2>
     <div class="ctl">
@@ -586,12 +599,13 @@
       <div class="read"><div><span>Larghezza elemento</span><strong id="soW">120 cm</strong></div><div><span>Misurata nel modello</span><strong id="soM" style="font-size:15px">120 cm, 1 elemento</strong></div></div>
       <p class="rinfo" id="soI"></p>
     </div>
-    <button class="replay" data-b="6">↻ Rimonta</button>
+    <button class="replay" data-sys="solai">↻ Rimonta</button>
+  </div>
   </div></div>
 </section>
 
 <!-- CONFIGURATORE -->
-<section id="config" class="s3d tall" data-beat="7">
+<section id="config" class="s3d tall" data-beat="2">
   <div class="stick"><div class="card" id="cfg">
     <div class="eyebrow">Tutti i tetti</div><div class="sysname sm">Il tuo capannone</div>
     <h2 class="t">Cambia il tetto. Cambia le misure.</h2>
@@ -643,7 +657,7 @@
 </section>
 
 <!-- SISMICA -->
-<section id="sicurezza" class="s3d tall" data-beat="8">
+<section id="sicurezza" class="s3d tall" data-beat="3">
   <div class="stick"><div class="card" id="seis">
     <div class="eyebrow">Sicurezza sismica</div><div class="sysname sm">Jawfix® + AllDrift®</div><div class="syssub">Certificati UNI EN 15129</div><h2 class="t">Quando la terra trema, ognuno fa il suo lavoro.</h2>
     <p class="lead m-hide" style="font-size:16px"><b style="color:#fff">Jawfix®</b> tiene la trave sul pilastro. <b style="color:#fff">AllDrift®</b> lascia scorrere il pannello di tamponamento. Accendili uno alla volta o insieme e scuoti.</p>
@@ -662,7 +676,7 @@
 </section>
 
 <!-- CONNECT -->
-<section id="connect" class="s3d tall" data-beat="9">
+<section id="connect" class="s3d tall" data-beat="4">
   <div class="stick"><div class="card" id="conn">
     <div class="eyebrow">Monitoraggio</div><div class="sysname sm">Manini Connect</div><h2 class="t">Il pilastro che ti avvisa.</h2>
     <p class="lead m-hide" style="font-size:16px">Sensori integrati nei pilastri già in produzione. I dati arrivano via cloud alla Control Room Manini, e gli algoritmi segnalano subito ogni anomalia.</p>
@@ -717,7 +731,7 @@
 </section>
 
 <!-- VERDE -->
-<section id="verde" class="s3d tall" data-beat="10">
+<section id="verde" class="s3d tall" data-beat="5">
   <div class="stick"><div class="card">
     <div class="eyebrow">Sostenibilità</div><div class="sysname sm">Powershed® · Tetto verde</div><h2 class="t">Il tetto che lavora per te.</h2>
     <p class="lead m-hide" style="font-size:16px">Fotovoltaico fissato senza forare l'impermeabilizzazione. Tetti verdi che trattengono l'acqua e raffrescano. Un sito carbon free, compensato. Manini è socia del Green Building Council Italia.</p>

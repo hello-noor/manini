@@ -18,7 +18,7 @@
     menu.addEventListener('click', e => {
       const a = e.target.closest('a'); if (!a) return; e.preventDefault();
       if (a.dataset.jump) return;
-      if (a.dataset.b) return jump(document.querySelector(`[data-beat="${a.dataset.b}"]`), 'center');
+      if (a.dataset.sys) { window.__selectSystem && window.__selectSystem(a.dataset.sys); return jump(document.querySelector('[data-beat="1"]'), 'start'); }
       const id = a.getAttribute('href'); jump(id === '#top' ? document.body : document.querySelector(id), 'start');
     });
     addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
