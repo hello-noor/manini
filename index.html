@@ -188,6 +188,9 @@
     <ul class="chips"><li>Luce fino a <b>32 m</b></li><li>Maglia <b>25 × 25 m</b> e oltre</li><li>Ancoraggi sismici</li></ul>
     <div class="ctl">
       <label class="row">Maglia<input id="mgS" type="range" min="12" max="32" step="1" value="32"><output id="mgO">32 m</output></label>
+      <label class="row"><button class="mini" id="snP2" type="button" aria-label="Pausa o avvia il sole">⏸</button>Sole<input id="snT2" type="range" min="7" max="19" step=".05" value="8"><output id="snO2">8:00</output></label>
+      <div class="meter"><i id="snM2"></i></div>
+      <div class="status" id="snS2">Il sole percorre il cielo sulle grandi luci.</div>
       <div class="read"><div><span>Pilastri</span><strong id="mgC">32</strong></div><div><span>Rispetto a 12 m</span><strong id="mgD">−56%</strong></div></div>
     </div>
     <p class="fine m-hide">Esempio: capannone 96 × 48 m, interasse 7,5 m. Conteggio geometrico.</p>

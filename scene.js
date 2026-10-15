@@ -551,14 +551,13 @@ document.querySelectorAll('.replay').forEach(b => b.addEventListener('click', ()
 const sun = { play: true, h: 8 };
 const sunVec = h => { const k = clamp((h - 7) / 12, 0, 1), az = lerp(-75, 75, k) * Math.PI / 180, el = (10 + 52 * Math.sin(Math.PI * k)) * Math.PI / 180; return { v: V3(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)), deg: el * 180 / Math.PI }; };
 const fmtH = h => { const hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return `${hh}:${String(mm).padStart(2, '0')}`; };
-const snT = $('#snT'), snP = $('#snP');
-snT.addEventListener('input', () => { sun.play = false; sun.h = +snT.value; snP.textContent = '▶'; });
-snP.addEventListener('click', () => { sun.play = !sun.play; snP.textContent = sun.play ? '⏸' : '▶'; });
+const snTs = [$('#snT'), $('#snT2')], snPs = [$('#snP'), $('#snP2')];
+snTs.forEach(t => t.addEventListener('input', () => { sun.play = false; sun.h = +t.value; snPs.forEach(b => b.textContent = '▶'); }));
+snPs.forEach(b => b.addEventListener('click', () => { sun.play = !sun.play; snPs.forEach(x => x.textContent = sun.play ? '⏸' : '▶'); }));
 function sunUI(sv) {
-  $('#snO').textContent = fmtH(sun.h);
-  const direct = sv.deg > 14 ? clamp(sv.v.z / .5, 0, 1) : 0;
-  $('#snM').style.width = Math.round(direct * 100) + '%';
-  $('#snS').textContent = direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dalle vetrate dello shed (${Math.round(direct * 100)}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa dallo shed.`;
+  const direct = sv.deg > 14 ? clamp(sv.v.z / .5, 0, 1) : 0, pct = Math.round(direct * 100);
+  const txt = direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dalle vetrate dello shed (${pct}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa dallo shed.`;
+  for (const k of ['', '2']) { $('#snO' + k).textContent = fmtH(sun.h); $('#snM' + k).style.width = pct + '%'; $('#snS' + k).textContent = txt; }
 }
 // visible sun + arc
 const sunTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,250,225,1)'); gr.addColorStop(.18, 'rgba(255,225,150,.95)'); gr.addColorStop(.5, 'rgba(255,190,90,.25)'); gr.addColorStop(1, 'rgba(255,170,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
@@ -568,25 +567,25 @@ const arcPts = []; for (let h = 7; h <= 19.01; h += .5) arcPts.push(sunVec(h).v.
 const sunArc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcPts), new THREE.LineDashedMaterial({ color: 0xffd9a0, dashSize: 2.5, gapSize: 3, transparent: true, opacity: .35, fog: false }));
 sunArc.computeLineDistances(); scene.add(sunArc);
 // light shafts through the shed glazing
-const shafts = mOndal.glassStrips.map(g => {
+const makeShafts = m => m.glassStrips.map(g => {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(36), 3));
   const col = new Float32Array(36); for (let q = 0; q < 3; q++) { const o = q * 12, a1 = .5, a2 = .08; [a1, a1, a2, a2].forEach((a, vi) => { col[o + vi * 3] = a; col[o + vi * 3 + 1] = a * .85; col[o + vi * 3 + 2] = a * .5; }); }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11]);
   const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
-  mesh.frustumCulled = false; mesh.visible = false; mOndal.g.add(mesh); return { g, mesh };
+  mesh.frustumCulled = false; mesh.visible = false; m.g.add(mesh); return { g, mesh };
 });
-function shaftsUpdate(sv, w) {
+const shaftsA = makeShafts(mOndal), shaftsB = makeShafts(mOndalP);
+function shaftsUpdate(list, sv, w, x1) {
   const on = w > .3 && sv.deg > 14 && sv.v.z > .12;
-  shafts.forEach(({ g, mesh }) => {
+  list.forEach(({ g, mesh }) => {
     mesh.visible = on; if (!on) return;
-    const pos = mesh.geometry.attributes.position.array, v = sv.v;
+    const pos = mesh.geometry.attributes.position.array, v = sv.v, xa = g.x0, xb = x1 === undefined ? g.x1 : x1;
     const ys = [g.yb, (g.yb + g.yt) / 2, g.yt];
     ys.forEach((y, q) => {
-      const t = Math.min(y / v.y, g.z / v.z), fx = 0, fz = g.z - v.z * t, fy = y - v.y * t;
-      const o = q * 12;
-      pos.set([g.x0, y, g.z, g.x1, y, g.z, g.x1 + fx, fy, fz, g.x0 + fx, fy, fz], o);
+      const t = Math.min(y / v.y, g.z / v.z), fz = g.z - v.z * t, fy = y - v.y * t;
+      pos.set([xa, y, g.z, xb, y, g.z, xb, fy, fz, xa, fy, fz], q * 12);
     });
     mesh.geometry.attributes.position.needsUpdate = true; mesh.material.opacity = .2 * w;
   });
@@ -624,7 +623,7 @@ function mgUpdate() {
   const S2 = +mgS.value; mOndalP.setSpan(S2); $('#mgO').textContent = S2 + ' m';
   const cols = g => (Math.ceil(96 / g) + 1) * (Math.ceil(48 / 7.5) + 1), c = cols(S2), c0 = cols(12);
   $('#mgC').textContent = c; $('#mgD').textContent = c === c0 ? '0%' : '−' + Math.round((1 - c / c0) * 100) + '%';
-  const ox = mOndalP.origin.x; beats[2].c.x = ox + S2 / 2; beats[2].labels[0].p.x = ox + S2 / 2; beats[2].labels[1].p.x = ox + S2;
+  const ox = mOndalP.origin.x; beats[2].c.x = ox + S2 / 2; beats[2].labels[0].p.x = ox + S2 / 2; beats[2].labels[1].p.x = ox + S2; beats[2].labels[0].el.querySelector('b').textContent = S2 >= 32 ? 'Luce fino a 32 m' : `Luce ${S2} m`;
 }
 mgS.addEventListener('input', mgUpdate);
 
@@ -781,15 +780,16 @@ function tick(now) {
   mOndal.target = Math.abs(fS) < 2.2 ? 1 : 0;
   if (!REDUCED && intro < 1) { intro += dt * .35; }
   // lights follow (the sun slider drives the key light on the Ondal step)
-  if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snT.value = sun.h; }
-  const sw = clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1), sv = sunVec(sun.h);
+  if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snTs.forEach(t => t.value = sun.h); }
+  const sw1 = clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1), sw2 = clamp(1 - Math.abs(fS - 2) * 1.6, 0, 1), sw = Math.max(sw1, sw2), sv = sunVec(sun.h), sm0 = sw2 > sw1 ? mOndalP : mOndal;
   key.position.set(camTgt.x - 26, camTgt.y + 44, camTgt.z + 30).lerp(tmp.copy(camTgt).addScaledVector(sv.v, 60), sw);
   key.intensity = lerp(2.3, .9 + 2.6 * Math.sin(sv.deg * Math.PI / 180), sw);
   key.color.setHex(0xfff0dd).lerp(new THREE.Color(0xffc48a), sw * (1 - clamp((sv.deg - 10) / 30, 0, 1)));
   key.target.position.copy(camTgt);
-  sunSprite.position.copy(mOndal.origin).addScaledVector(sv.v, 100); sunSprite.material.opacity = sw; sunSprite.visible = sw > .02;
-  sunArc.position.copy(mOndal.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
-  if (sw > .02) { shaftsUpdate(sv, sw); sunUI(sv); } else shaftsUpdate(sv, 0);
+  sunSprite.position.copy(sm0.origin).addScaledVector(sv.v, 100); sunSprite.material.opacity = sw; sunSprite.visible = sw > .02;
+  sunArc.position.copy(sm0.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
+  shaftsUpdate(shaftsA, sv, sw1); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3);
+  if (sw > .02) sunUI(sv);
   rim.position.set(camTgt.x + 30, camTgt.y + 20, camTgt.z - 34); rim.target.position.copy(camTgt);
   const ab = Math.round(fS); if (ab !== activeBeat) { activeBeat = ab; closeTags(); }
   tabs.classList.toggle('on', fS > .7 && fS < 6.4);
