@@ -168,7 +168,7 @@ function buildOndal(ox, o = {}) {
             const P = g.attributes.position; for (let k = 0; k < P.count; k++) { const x = P.getX(k), zz = P.getZ(k); P.setY(k, prof(clamp(x, -L / 2, L / 2)) - .04 + archH(zz)); }
             g.computeVertexNormals(); const cm = M.cap.clone(); cm.side = THREE.DoubleSide; cm.bumpMap = ribTex.clone(); cm.bumpMap.repeat.set((L - .4) / .22, 1); cm.bumpMap.needsUpdate = true; cm.bumpScale = 2.2;
             const arc = new THREE.Mesh(g, cm); arc.position.set(xm, colH, z + sp / 2); m.add(arc, dl2 + .06); m.cappelle.push(arc);
-            if (q % 2 === 1) for (const xk of [-6, -2, 2, 6]) { const gg = new THREE.PlaneGeometry(1.5, GAPT, 3, 10); gg.rotateX(-Math.PI / 2); const Q = gg.attributes.position; for (let k = 0; k < Q.count; k++) { const x = Q.getX(k) + xk, zz = Q.getZ(k); Q.setY(k, prof(clamp(x, -L / 2, L / 2)) - .0 + archH(zz)); } gg.computeVertexNormals(); const gl2 = new THREE.Mesh(gg, skyM); gl2.position.set(xm + xk, colH, z + sp / 2); gl2.castShadow = false; m.add(gl2, dl2 + .1); }
+            if (q % 2 === 1) for (const xk of [-6, -2, 2, 6]) { const gg = new THREE.PlaneGeometry(1.5, GAPT, 3, 10); gg.rotateX(-Math.PI / 2); const Q = gg.attributes.position; for (let k = 0; k < Q.count; k++) { const x = Q.getX(k) + xk, zz = Q.getZ(k); Q.setY(k, prof(clamp(x, -L / 2, L / 2)) - .0 + archH(zz)); } gg.computeVertexNormals(); const gl2 = new THREE.Mesh(gg, skyM); gl2.position.set(xm + xk, colH, z + sp / 2); gl2.castShadow = false; m.add(gl2, dl2 + .1); (m.skyH = m.skyH || []).push({ x0: xm + xk - .75, x1: xm + xk + .75, z0: z + sp / 2 - GAPT * .42, z1: z + sp / 2 + GAPT * .42, y: colH + prof(xk) + SAGT }); }
           }
         }
         m.stat = { name: 'Travi TAU', n: (rows.length - 1) * (nT + 1) };
@@ -290,7 +290,7 @@ function buildTau(ox) {
   for (let i = 0; i < 3; i++) {
     const zc = (zsB[i] + zsB[i + 1]) / 2;
     const c = arch(0, L - 1.2, zc, M.cap, 0); c.material = M.cap.clone(); c.material.side = THREE.DoubleSide; c.material.bumpMap = ribTex.clone(); c.material.bumpMap.repeat.set((L - 1.2) / .22, 1); c.material.bumpMap.needsUpdate = true; c.material.bumpScale = 2.2; m.add(c, .62 + i * .05, V3(0, 20, 0), m.g, null, 'tauroof');
-    if (i !== 0) for (const xk of [-4.2, 0, 4.2, 8.5]) { const gm = arch(xk, 1.6, zc, skyM, .04); m.add(gm, .8, V3(0, 20, 0), m.g, null, 'tausky'); gm.castShadow = false; }
+    if (i !== 0) for (const xk of [-4.2, 0, 4.2, 8.5]) { const gm = arch(xk, 1.6, zc, skyM, .04); m.add(gm, .8, V3(0, 20, 0), m.g, null, 'tausky'); (m.skyH = m.skyH || []).push({ x0: xk - .8, x1: xk + .8, z0: zc - GAP * .42, z1: zc + GAP * .42, y: colH + prof(xk) + SAG }); gm.castShadow = false; }
   }
   // infisso shed (opzionale) sulla cappella centrale e lunotti in ABS alle estremità di ogni cappella
   { const zc = (zsB[1] + zsB[2]) / 2, xs = -8, ys = colH + prof(xs) + SAG - .02, sl = Math.atan(dprof(xs));
@@ -885,26 +885,35 @@ const makeShafts = m => m.glassStrips.map(g => {
 });
 const shaftsA = makeShafts(mOndal), shaftsB = makeShafts(mOndalP);
 // raggi dai lucernari a raso della cappella curva: volumi dal rettangolo vetrato fino al pavimento
-const makeSky = mm => (mm.skyH || []).map(r => {
+const poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,200,1)'); gr.addColorStop(.6, 'rgba(255,225,160,.45)'); gr.addColorStop(1, 'rgba(255,220,150,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const makeSky = mm => (mm.skyH || []).map((r, idx) => {
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(24), 3));
-  const col = new Float32Array(24); for (let i = 0; i < 8; i++) { const a = i < 4 ? .55 : .08; col[i * 3] = a; col[i * 3 + 1] = a * .85; col[i * 3 + 2] = a * .5; }
+  const col = new Float32Array(24); for (let i = 0; i < 8; i++) { const a = i < 4 ? .6 : .1; col[i * 3] = a; col[i * 3 + 1] = a * .85; col[i * 3 + 2] = a * .5; }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setIndex([0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7]);
   const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
-  mesh.frustumCulled = false; mesh.visible = false; mm.g.add(mesh); return { r, mesh };
+  mesh.frustumCulled = false; mesh.visible = false; mm.g.add(mesh);
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  pool.rotation.x = -Math.PI / 2; pool.position.y = .07; pool.visible = false; mm.g.add(pool);
+  return { r, mesh, pool, idx };
 });
 const shaftsC = makeSky(mOndal);
-let heroSh = makeShafts(mHero), heroSky = makeSky(mHero); mHero.keepStruct = true;
 function shaftsCUpdate(sv, w, list = shaftsC) {
   const on = w > .3 && sv.deg > 14;
-  list.forEach(({ r, mesh }) => {
-    mesh.visible = on; if (!on) return;
+  list.forEach(({ r, mesh, pool, idx }) => {
+    mesh.visible = pool.visible = on; if (!on) return;
     const v = sv.v, t = r.y / v.y, dx = -v.x * t, dz = -v.z * t, P = mesh.geometry.attributes.position.array;
     const c = [[r.x0, r.z0], [r.x1, r.z0], [r.x1, r.z1], [r.x0, r.z1]];
     c.forEach(([x, z], i) => { P.set([x, r.y, z], i * 3); P.set([x + dx, 0, z + dz], (i + 4) * 3); });
-    mesh.geometry.attributes.position.needsUpdate = true; mesh.material.opacity = .22 * w;
+    mesh.geometry.attributes.position.needsUpdate = true;
+    const sh = .88 + .12 * Math.sin(time * 1.8 + idx * 1.3);
+    mesh.material.opacity = .36 * w * sh;
+    pool.position.set((r.x0 + r.x1) / 2 + dx, .07, (r.z0 + r.z1) / 2 + dz); pool.scale.set((r.x1 - r.x0) * 2.1 + Math.abs(dx) * .12, (r.z1 - r.z0) * 1.5, 1);
+    pool.material.opacity = .85 * w * clamp(v.y * 1.4, 0, 1) * sh;
   });
 }
+const tauSky = makeSky(mTau);
+let heroSh = makeShafts(mHero), heroSky = makeSky(mHero); mHero.keepStruct = true;
 function shaftsUpdate(list, sv, w, x1) {
   const on = w > .3 && sv.deg > 14 && sv.v.z > .12;
   list.forEach(({ g, mesh }) => {
@@ -1202,7 +1211,7 @@ function tick(now) {
   if (!REDUCED && gate && intro < 1) { intro += dt * .35; }
   // lights follow (the sun slider drives the key light on the Ondal step)
   if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snTs.forEach(t => t.value = sun.h); }
-  const sw1 = sysSel === 'ondal' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw0 = clamp(1 - fS * 1.6, 0, 1), sw2 = sysSel === 'ondalp' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw = Math.max(sw0, sw1, sw2), sv = sunVec(sun.h), sm0 = sw0 >= sw1 && sw0 >= sw2 ? mHero : sw2 > sw1 ? mOndalP : mOndal;
+  const sw1 = sysSel === 'ondal' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw0 = clamp(1 - fS * 1.6, 0, 1), sw2 = sysSel === 'ondalp' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, swT = sysSel === 'tau' ? clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1) : 0, sw = Math.max(sw0, sw1, sw2, swT), sv = sunVec(sun.h), sm0 = swT >= sw && swT > 0 ? mTau : sw0 >= sw1 && sw0 >= sw2 ? mHero : sw2 > sw1 ? mOndalP : mOndal;
   key.position.set(camTgt.x - 26, camTgt.y + 44, camTgt.z + 30).lerp(tmp.copy(camTgt).addScaledVector(sv.v, 60), sw);
   key.intensity = lerp(2.3, .9 + 2.6 * Math.sin(sv.deg * Math.PI / 180), sw);
   key.color.setHex(0xfff0dd).lerp(new THREE.Color(0xffc48a), sw * (1 - clamp((sv.deg - 10) / 30, 0, 1)));
@@ -1210,7 +1219,8 @@ function tick(now) {
   sunSprite.position.copy(sm0.origin).addScaledVector(sv.v, 100); sunSprite.material.opacity = sw; sunSprite.visible = sw > .02;
   sunArc.position.copy(sm0.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
   const curvedNow = mOndal.hidden.has('shed');
-  shaftsUpdate(shaftsA, sv, curvedNow ? 0 : sw1); shaftsCUpdate(sv, curvedNow ? sw1 : 0); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3); shaftsUpdate(heroSh, sv, mHero.t > .7 ? sw0 : 0); shaftsCUpdate(sv, mHero.t > .7 ? sw0 : 0, heroSky);
+  shaftsUpdate(shaftsA, sv, curvedNow ? 0 : sw1); shaftsCUpdate(sv, curvedNow ? sw1 : 0); shaftsUpdate(shaftsB, sv, sw2, +mgS.value - .3); shaftsCUpdate(sv, mTau.hidden.has('tausky') || mTau.flat ? 0 : swT, tauSky);
+  shaftsUpdate(heroSh, sv, mHero.t > .7 ? sw0 : 0); shaftsCUpdate(sv, mHero.t > .7 ? sw0 : 0, heroSky);
   if (sw > .02 && sw0 < .5) sunUI(sv);
   if (gate && fS < .7) {
     heroT += dt;
