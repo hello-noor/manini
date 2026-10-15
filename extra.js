@@ -83,7 +83,24 @@
   if (!svg) return;
   const NS = 'http://www.w3.org/2000/svg';
   const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
-  const ICON = { 'Produzione': '🏭', 'Industria': '🏗️', 'Centro Commerciale': '🛒', 'Food & Beverage': '🍝', 'Moda': '👗', 'Automotive': '🚗', 'Arredamento & Immobiliare': '🛋️', 'Logistica & Spedizioni': '🚚', 'Farmacologia & Cosmesi': '💊', 'Servizi': '🧰', 'Parcheggi': '🅿️', 'Adeguamento Sismico': '🛡️', 'Copertura Industriale': '🏠', 'Fotovoltaico': '☀️', 'Efficientamento Energetico': '⚡' };
+  const SV = d => `<svg class="ci" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+  const ICON = {
+    'Produzione': SV('<path d="M3 20V10l5 3v-3l5 3V6h4v14z"/><path d="M3 20h14"/>'),
+    'Industria': SV('<path d="M3 18h18"/><path d="M5 18a7 7 0 0114 0"/><path d="M12 6v6.5M8.5 18v-4.5"/>'),
+    'Centro Commerciale': SV('<path d="M3 4h2l2.4 11h10.2L20 7H6.2"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>'),
+    'Food & Beverage': SV('<path d="M7 3v8M5 3v5a2 2 0 004 0V3M7 11v10M17 3c-2 2-3 5-3 8h3v10"/>'),
+    'Moda': SV('<path d="M12 7a2 2 0 10-2-2"/><path d="M12 7v2L3 16a1 1 0 00.6 1.8h16.8A1 1 0 0021 16l-9-7"/>'),
+    'Automotive': SV('<path d="M4 15l1.6-5A2 2 0 017.5 8.5h9a2 2 0 011.9 1.5L20 15"/><path d="M3 15h18v3H3z"/><circle cx="7.5" cy="18.2" r="1.2"/><circle cx="16.5" cy="18.2" r="1.2"/>'),
+    'Arredamento & Immobiliare': SV('<path d="M5 11V8a2 2 0 012-2h10a2 2 0 012 2v3"/><path d="M3 12a2 2 0 014 0v2h10v-2a2 2 0 014 0v5H3z"/><path d="M5 17v2M19 17v2"/>'),
+    'Logistica & Spedizioni': SV('<path d="M2 6h11v10H2zM13 9h4l3 3v4h-7"/><circle cx="6" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'),
+    'Farmacologia & Cosmesi': SV('<path d="M9 3h6M10 3v6l-5 9a2 2 0 001.8 3h10.4A2 2 0 0019 18l-5-9V3"/><path d="M7.5 15h9"/>'),
+    'Servizi': SV('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/>'),
+    'Parcheggi': SV('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 17V8h3a2.5 2.5 0 010 5h-3"/>'),
+    'Adeguamento Sismico': SV('<path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6z"/><path d="M8 12h2l1.5-3 2 6 1.5-3h1"/>'),
+    'Copertura Industriale': SV('<path d="M3 12l9-7 9 7"/><path d="M5 11v9h14v-9"/><path d="M10 20v-5h4v5"/>'),
+    'Fotovoltaico': SV('<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/>'),
+    'Efficientamento Energetico': SV('<path d="M13 2L5 13h6l-1 9 8-11h-6z"/>'),
+  };
   Promise.all([fetch('data/italy.json').then(r => r.json()), fetch('data/projects.json').then(r => r.json())]).then(([IT, P]) => {
     const proj = (lat, lon) => [(lon - IT.lon0) * IT.cx * IT.k, (IT.lat0 - lat) * IT.k];
     const norm = s => (s || '').replace('Emilia Romagna', 'Emilia-Romagna');
@@ -111,8 +128,10 @@
     const tagC = {}; P.forEach(p => p.g.forEach(t => { tagC[t] = (tagC[t] || 0) + 1; }));
     const tagList = Object.entries(tagC).filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).map(e => e[0]);
     const chips = $('#chips');
-    chips.innerHTML = tagList.map(t => `<button class="chip2" data-t="${t.replace(/"/g, '&quot;')}"><em>${ICON[t] || '•'}</em>${t}<i>${tagC[t]}</i></button>`).join('');
+    chips.innerHTML = tagList.map(t => `<button class="chip2" data-t="${t.replace(/"/g, '&quot;')}">${ICON[t] || ''}${t}<i>${tagC[t]}</i></button>`).join('');
     chips.addEventListener('click', e => { const b = e.target.closest('.chip2'); if (!b) return; const t = b.dataset.t; tags.has(t) ? tags.delete(t) : tags.add(t); b.classList.toggle('on', tags.has(t)); closePop(); refresh(); });
+    const fh = $('#fh'), filt = $('#filt');
+    fh.addEventListener('click', () => { if (innerWidth > 700) return; const o = !filt.classList.contains('open'); filt.classList.toggle('open', o); fh.setAttribute('aria-expanded', o); });
     function refresh() {
       pins.forEach(g => g.classList.toggle('hide', !vis(g._p)));
       const c = { n: 0, r: 0 }; P.forEach(p => { if (vis(p)) c[p.k]++; });
@@ -121,6 +140,7 @@
       const rc = {}; P.forEach(p => { if (vis(p) && p.r) { const r = norm(p.r); rc[r] = rc[r] || { n: 0, r: 0 }; rc[r][p.k]++; } });
       const rows = Object.entries(rc).sort((a, b) => (b[1].n + b[1].r) - (a[1].n + a[1].r)), mx = Math.max(1, ...rows.map(r => r[1].n + r[1].r));
       $('#rbars').innerHTML = rows.slice(0, 7).map(([n, v]) => `<div class="rb"><span>${n}</span><div class="bar2"><i class="n" style="width:${v.n / mx * 100}%"></i><i class="r" style="width:${v.r / mx * 100}%"></i></div><em>${v.n + v.r}</em></div>`).join('') || '<div class="meta" style="color:var(--dim)">Nessun progetto con questi filtri.</div>';
+      $('#fsum').textContent = tags.size === 0 ? 'Tutti i progetti' : tags.size === 1 ? [...tags][0] : `${tags.size} tipi selezionati`;
       if (selected && !vis(selected._p)) closePop();
     }
     document.querySelectorAll('#legend button').forEach(b => b.addEventListener('click', () => { on[b.dataset.k] = !on[b.dataset.k]; refresh(); }));
