@@ -443,6 +443,14 @@
   @media(max-width:560px){.two{grid-template-columns:1fr}.areas{grid-template-columns:1fr}.area span{flex-direction:row;align-items:center;gap:8px;height:auto}.area .bar{display:none}.cf-nav{flex-wrap:wrap}.cf-nav .btn{flex:1}.ob{padding:12px}}
   @media(prefers-reduced-motion:reduce){.ct-r{animation:none}}
   @media(min-width:901px){.card{max-height:calc(100svh - 128px);overflow-y:auto;scrollbar-width:thin}}
+  .sw2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .swt{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.04);cursor:pointer;transition:.25s}
+  .swt input{position:absolute;opacity:0}.tk{flex:none;width:38px;height:22px;border-radius:99px;background:rgba(255,255,255,.16);position:relative;transition:.25s}
+  .tk:after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.25s}
+  .swt input:checked+.tk{background:var(--brand)}.swt input:checked+.tk:after{transform:translateX(16px)}
+  .swt:has(input:checked){border-color:var(--accent);background:rgba(0,73,138,.35)}.swt input:focus-visible+.tk{outline:2px solid #fff;outline-offset:2px}
+  .tx{display:flex;flex-direction:column;line-height:1.15}.tx b{font-size:15px}.tx i{font:500 10.5px 'JetBrains Mono',monospace;font-style:normal;color:var(--dim);margin-top:3px}
+  .read>div.bad{background:rgba(255,77,77,.16)}.read>div.bad strong{color:#ff9d9d}
   .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
   #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
@@ -608,7 +616,7 @@
       <div class="bx t3 rv"><span class="bgfx"></span><div class="big">24/48h</div><div><h3>Intervento in tutta Italia</h3><p>Manini Service risponde in uno o due giorni.</p></div></div>
       <div class="bx t4 rv"><span class="bgfx"></span><div class="big">R180</div><div><h3>Fino a R180 al fuoco</h3><p>Da R60 a R180 su richiesta per le coperture Ondal.</p></div></div>
       <div class="bx t5 rv"><span class="bgfx"></span><div class="big">−70%</div><div><h3>Acqua di deflusso</h3><p>Il tetto verde può ridurre fino al 70% le acque piovane.</p></div></div>
-      <div class="bx w t6 rv"><span class="bgfx"></span><div class="big s">UNI EN 15129</div><div><h3>AllDrift®, la connessione che scorre.</h3><p>Certificata secondo la norma richiesta dalle NTC 2018: scorrimento su blocchi in PTFE e snodi a cerniera. Provala qui sotto.</p></div></div>
+      <div class="bx w t6 rv"><span class="bgfx"></span><div class="big s">UNI EN 15129</div><div><h3>Jawfix® e AllDrift®: la trave resta, il pannello scorre.</h3><p>Due dispositivi certificati UNI EN 15129. Jawfix® tiene le travi sui pilastri, AllDrift® lascia scorrere i pannelli. Provali qui sotto.</p></div></div>
       <div class="bx w t7 rv"><span class="bgfx"></span><div class="big s">IoT 2018</div><div><h3>Manini Connect, premiato e brevettato.</h3><p>Premio Internet of Things ai Digital360 Awards 2018. Sensori nei pilastri, dati in tempo reale alla Control Room.</p></div></div>
     </div>
   </div>
@@ -617,17 +625,17 @@
 <!-- SISMICA -->
 <section id="sicurezza" class="s3d tall" data-beat="8">
   <div class="stick"><div class="card" id="seis">
-    <div class="eyebrow">Sicurezza sismica</div><div class="sysname sm">AllDrift®</div><h2 class="t">Quando la terra trema, la trave scorre.</h2>
-    <p class="lead m-hide" style="font-size:16px">Due file di pilastri si muovono in modo diverso. Con un collegamento rigido la trave si spezza. Con AllDrift® scorre su blocchi in PTFE e snodi a cerniera.</p>
+    <div class="eyebrow">Sicurezza sismica</div><div class="sysname sm">Jawfix® + AllDrift®</div><div class="syssub">Certificati UNI EN 15129</div><h2 class="t">Quando la terra trema, ognuno fa il suo lavoro.</h2>
+    <p class="lead m-hide" style="font-size:16px"><b style="color:#fff">Jawfix®</b> tiene la trave sul pilastro. <b style="color:#fff">AllDrift®</b> lascia scorrere il pannello di tamponamento. Accendili uno alla volta o insieme e scuoti.</p>
     <div class="ctl">
-      <div class="seg" id="seMode"><button class="on" data-m="rigid">Collegamento rigido</button><button data-m="alldrift">AllDrift®</button></div>
+      <div class="sw2"><label class="swt"><input type="checkbox" id="swJ"><span class="tk"></span><span class="tx"><b>Jawfix®</b><i>trave–pilastro</i></span></label><label class="swt"><input type="checkbox" id="swA"><span class="tk"></span><span class="tx"><b>AllDrift®</b><i>pannello–struttura</i></span></label></div>
       <label class="row">Magnitudo<input id="seI" type="range" min="4" max="8" step="0.5" value="6"><output id="seIo">M 6,0</output></label>
       <button class="btn" id="seGo">Scuoti</button>
-      <div class="read"><div><span>Spostamento relativo</span><strong id="seD">0,000 m</strong></div><div><span>Capacità</span><strong id="seC">0,10 m</strong></div></div>
+      <div class="read"><div><span>Trave · spostamento / limite</span><strong id="seD">0,00 / 0,10 m</strong></div><div><span>Pannello · spostamento / limite</span><strong id="seC">0,00 / 0,10 m</strong></div></div>
       <div class="meter"><i id="seM"></i></div>
       <div class="status" id="seS">Premi “Scuoti”.</div>
     </div>
-    <p class="fine m-hide">Dimostrazione didattica, non un calcolo strutturale. Magnitudo indicativa: lo scuotimento reale dipende anche da distanza e terreno. Capacità illustrative, spostamenti ×5.</p>
+    <p class="fine m-hide">Jawfix®: connessione trave-pilastro. AllDrift®: connessione pannello-struttura. Dimostrazione didattica, non un calcolo strutturale. Magnitudo indicativa: lo scuotimento reale dipende anche da distanza e terreno. Capacità illustrative, spostamenti ×5.</p>
   </div></div>
 </section>
 

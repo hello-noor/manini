@@ -434,22 +434,34 @@ function buildSeismic(ox) {
   const slab = box(12.6, .25, 6.6, M.concreteD, 6.3, .55, 0); slab.castShadow = true; pivot.add(slab);
   const seatR = new THREE.Group(); m.g.add(seatR);
   const rigid = box(1.1, .12, 4.8, M.steel, 0, 0, 0); const bolt = [-1.8, 1.8].map(z => { const b = box(.18, .5, .18, M.steel, 0, .2, z); seatR.add(b); return b; });
-  const slide = box(1.3, .28, 4.8, M.ptfe, 0, 0, 0);
-  const rail = [-2.55, 2.55].map(z => { const r = box(1.7, .4, .12, M.steel, 0, .1, z); seatR.add(r); return r; });
-  seatR.add(rigid, slide);
+  // Jawfix: dissipatore assiale fra trave e pilastro (cilindro + piastre), lascia scorrere ma trattiene la trave
+  const jawParts = [];
+  for (const zz of [-1.8, 1.8]) {
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, 1.7, 20), M.glow); cyl.rotation.z = Math.PI / 2; cyl.position.set(0, .3, zz); cyl.castShadow = true; seatR.add(cyl); jawParts.push(cyl);
+    for (const sx of [-.85, .85]) { const pl = box(.12, .6, .5, M.steel, sx, .3, zz); seatR.add(pl); jawParts.push(pl); }
+  }
+  seatR.add(rigid);
+  // pannello di tamponamento appeso alla struttura a sinistra, con attacco in testa
+  const panelG = new THREE.Group(); m.g.add(panelG);
+  const PH = 5.2, PW = 5.2, panelMat = new THREE.MeshStandardMaterial({ color: 0xdcdad4, roughness: .85, bumpMap: bump, bumpScale: .4 });
+  const pg = new THREE.BoxGeometry(PW, PH, .3); pg.translate(0, PH / 2, 0);
+  const panel = new THREE.Mesh(pg, panelMat); panel.castShadow = panel.receiveShadow = true; panel.matrixAutoUpdate = false; panelG.add(panel);
+  const brk = box(.5, .5, .5, M.steel, 0, 0, 3.55); m.g.add(brk);           // staffa sulla struttura
+  const pad = box(.7, .3, .34, M.ptfe, 0, 0, 3.3); m.g.add(pad);            // ganasce con blocchi in PTFE (AllDrift)
+  const padRigid = box(.5, .2, .34, M.steel, 0, 0, 3.3); m.g.add(padRigid); // saldatura rigida
   // static head caps for left side
   const capL = [-2.5, 2.5].map(z => { const c = box(1.3, .25, 1.2, M.concreteD, 0, 0, z); m.g.add(c); return c; });
   const capR = [-2.5, 2.5].map(z => { const c = box(1.8, .25, 1.4, M.concreteD, 0, 0, z); m.g.add(c); return c; });
   const S = {
-    t: -1, mode: 'rigid', I: 5.5, xg: 0, vg: 0, uL: 0, vL: 0, uR: 0, vR: 0, failed: false, fall: 0, fv: 0, peak: 0, running: false, d: 0,
+    t: -1, jaw: false, all: false, pfail: false, pfall: 0, pfv: 0, ppeak: 0, pd: 0, I: 5.5, xg: 0, vg: 0, uL: 0, vL: 0, uR: 0, vR: 0, failed: false, fall: 0, fv: 0, peak: 0, running: false, d: 0,
   };
-  const VX = 5, CAP = { rigid: .10, alldrift: .38 };
+  const VX = 5, capB = () => S.jaw ? .38 : .10, capP = () => S.all ? .38 : .10;
   const ag = t => {
     if (t < 0) return 0;
     const env = Math.min(1, t / .6) * Math.exp(-Math.max(0, t - 3.4) / 1.1);
     return env * (.6 * Math.sin(2 * Math.PI * .95 * t) + .5 * Math.sin(2 * Math.PI * 1.8 * t + 1.3) + .4 * Math.sin(2 * Math.PI * 3.1 * t + 2.1) + .3 * Math.sin(2 * Math.PI * 4.6 * t + .4));
   };
-  const reset = () => { Object.assign(S, { t: -1, xg: 0, vg: 0, uL: 0, vL: 0, uR: 0, vR: 0, failed: false, fall: 0, fv: 0, peak: 0, running: false, d: 0 }); beam.material = M.concrete; };
+  const reset = () => { Object.assign(S, { t: -1, xg: 0, vg: 0, uL: 0, vL: 0, uR: 0, vR: 0, failed: false, fall: 0, fv: 0, peak: 0, running: false, d: 0, pfail: false, pfall: 0, pfv: 0, ppeak: 0, pd: 0 }); beam.material = M.concrete; panelMat.emissive.setHex(0); panelMat.emissiveIntensity = 0; };
   S.reset = reset; S.start = () => { reset(); S.t = 0; S.running = true; };
   const wL = 2 * Math.PI * 1.0, wR = 2 * Math.PI * 2.4, z = .07;
   S.step = dt => {
@@ -460,13 +472,15 @@ function buildSeismic(ox) {
       S.vg += (a - 2 * .7 * 1.57 * S.vg - 1.57 * 1.57 * S.xg) * h; S.xg += S.vg * h;
       S.vL += (-a - 2 * z * wL * S.vL - wL * wL * S.uL) * h; S.uL += S.vL * h;
       S.vR += (-a - 2 * z * wR * S.vR - wR * wR * S.uR) * h; S.uR += S.vR * h;
+      if (!S.pfail) { const pd = Math.abs(S.uL); S.ppeak = Math.max(S.ppeak, pd); S.pd = pd; if (pd > capP()) { S.pfail = true; S.pfv = 0; panelMat.emissive.setHex(0xff2200); panelMat.emissiveIntensity = .6; } }
       if (!S.failed) {
         const d = Math.abs(S.uL - S.uR); S.peak = Math.max(S.peak, d); S.d = d;
-        if (d > CAP[S.mode]) { S.failed = true; S.fv = 0; beam.material = new THREE.MeshStandardMaterial({ color: 0xd3d0c9, roughness: .9, emissive: 0xff2200, emissiveIntensity: .8 }); }
+        if (d > capB()) { S.failed = true; S.fv = 0; beam.material = new THREE.MeshStandardMaterial({ color: 0xd3d0c9, roughness: .9, emissive: 0xff2200, emissiveIntensity: .8 }); }
       }
     }
     if (S.t > 9) S.running = false;
     if (S.failed) { S.fv += 9.8 * .35 * dt; S.fall = Math.min(.55, S.fall + S.fv * dt); }
+    if (S.pfail) { S.pfv += 9.8 * .3 * dt; S.pfall = Math.min(1.1, S.pfall + S.pfv * dt); }
   };
   S.apply = () => {
     const xg = S.xg, uL = S.uL * VX, uR = S.uR * VX;
@@ -479,10 +493,18 @@ function buildSeismic(ox) {
     pivot.position.set(-X + xg + uL - .4, hy + .5 + .12, 0);
     pivot.rotation.z = -S.fall;
     seatR.position.set(X + xg + uR, hy + .17, 0);
-    const rg = S.mode === 'rigid';
-    rigid.visible = rg; bolt.forEach(b => b.visible = rg); slide.visible = !rg; rail.forEach(r => r.visible = !rg);
+    const rg = !S.jaw;
+    rigid.visible = rg; bolt.forEach(b => b.visible = rg); jawParts.forEach(p => p.visible = !rg);
+    // pannello: ancorato in basso al terreno; in testa segue la struttura (rigido) o scorre (AllDrift)
+    panelG.position.set(-X + xg, 0, 3.3); panelG.rotation.x = S.pfall;
+    const k = S.all ? 0 : uL / H;
+    panel.matrix.set(1, k, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1); panel.matrixWorldNeedsUpdate = true;
+    const ty = PH - .5, topShear = S.all ? 0 : k * ty;
+    brk.position.set(-X + xg + uL, ty, 3.55); pad.visible = S.all; padRigid.visible = !S.all;
+    pad.position.set(-X + xg + topShear, ty, 3.3 + 0); padRigid.position.set(-X + xg + topShear, ty, 3.3);
+    if (S.pfail) { brk.visible = pad.visible = padRigid.visible = false; } else brk.visible = true;
   };
-  S.cap = () => CAP[S.mode];
+  S.cap = () => capB(); S.capP = () => capP();
   m.seis = S;
   return m;
 }
@@ -506,12 +528,12 @@ function buildConnect(ox) {
   const cm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .5, transparent: true, opacity: .85 });
   [[0, 0, 0, 1.6], [1.5, -.2, .2, 1.2], [-1.4, -.3, 0, 1.1], [.4, .5, .3, 1.1]].forEach(([x, y, z, r]) => { const s = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), cm); s.position.set(x, y, z); s.castShadow = false; cloud.add(s); });
   m.g.add(cloud);
-  const room = box(10, 5, 6, M.concrete, 18, 2.5, 4); m.add(room, .7, V3(30, 0, 0));
+  const room = box(10, 5, 6, M.concrete, 13, 2.5, 4); m.add(room, .7, V3(30, 0, 0));
   const cv = document.createElement('canvas'); cv.width = 640; cv.height = 360; const cg = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 4.725), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); screen.position.set(18, 2.6, 7.03); m.g.add(screen);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 4.725), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); screen.position.set(13, 2.6, 7.03); m.g.add(screen);
   // path for packets
-  const path = [V3(0, 1.2, 0), V3(0, H + .3, 0), V3(1.2, H + 1.7, 0), V3(5, 12.5, -1.5), V3(9, 15, -3), V3(14, 9, 0), V3(18, 3.8, 7)];
+  const path = [V3(0, 1.2, 0), V3(0, H + .3, 0), V3(1.2, H + 1.7, 0), V3(5, 12.5, -1.5), V3(9, 15, -3), V3(11, 9, 0), V3(13, 3.8, 7)];
   const curve = new THREE.CatmullRomCurve3(path, false, 'catmullrom', .4);
   const NPk = 30, packets = new THREE.InstancedMesh(new THREE.SphereGeometry(.09, 10, 8), new THREE.MeshBasicMaterial({ color: 0x7fc0ff }), NPk);
   packets.frustumCulled = false; m.g.add(packets);
@@ -628,6 +650,8 @@ const INFO = {
   'PI-Greco': 'Largo 250 cm, spessori da 40 a 80 cm. Forature grandi, lucernari a raso o shed. R120. Gli impianti passano tra le nervature e sono possibili travi porta-solaio di varie forme.',
   'Solman': 'Per grandi luci e forti sovraccarichi, con canale per gli impianti nell’intradosso. Altezze 60, 75 e 90 cm, larghezza 250 cm. Lamiera grecata sotto la soletta armata.',
   'Pluriman': 'Intradosso piano con meno giunti e, in alcuni casi, resistenza al fuoco superiore a R180. Altezze 60, 75 e 90 cm, larghezza 250 cm. Lamiera grecata sotto la soletta armata.',
+  'Jawfix®': 'Dissipatore assiale brevettato sulla connessione trave-pilastro: evita il ribaltamento fuori piano e lo sfilamento della trave. Certificato UNI EN 15129 (2022), validato dal laboratorio Eucentre di Pavia. Ancoranti Hilti.',
+  'AllDrift®': 'Connessione scorrevole tra pannello di tamponamento e struttura: blocchi in PTFE, snodi a cerniera, ganasce e molle a tazza. Struttura e pannelli si muovono in modo indipendente. Nei test Manini con la Vibrodina ha disaccoppiato spostamenti differenziali oltre 20 cm.',
   'Sensori nel pilastro': 'Sensori di ultima generazione integrati nei pilastri durante la produzione: rilevano anomalie statiche e dinamiche dei carichi.',
   'Trasmettitore sul tetto': 'Una scatola di trasmissione sul tetto raccoglie i dati dei sensori e li invia al cloud.',
   'Cloud': 'I dati arrivano in tempo reale. Gli algoritmi segnalano subito le anomalie e inviano avvisi o allarmi dopo sisma, bombe d’acqua o vento eccezionale.',
@@ -659,8 +683,8 @@ const beats = [
   B(mPlan, V3(0, 7.5, 0), 48, -42, 22, [[[-9, 4, 6], 'Pilastro'], [[9, 9.6, 0], 'Trave principale precompressa'], [[0, 11.2, -2.4], 'Trave secondaria a T'], [[-5, 11.2, 6], 'Manto isolante continuo']]),
   B(mSolai, V3(5, 1.6, -5.8), 17, 70, 16, [[[5, 1.5, -5.8], 'Poker'], [[5, 1.8, -1.9], 'PI-Greco'], [[5, 1.9, 1.1], 'Solman'], [[5, 1.9, 4.2], 'Pluriman']]),
   B(mCfg, V3(20, 5, 11), 80, -36, 22),
-  B(mSeis, V3(0, 4.5, 0), 40, 0, 8, []),
-  B(mConn, V3(8, 6.5, 2), 48, -26, 12, [[[0, 9.4, 0], 'Sensori nel pilastro'], [[1.2, 11.9, 0], 'Trasmettitore sul tetto'], [[9, 16.8, -3], 'Cloud'], [[18, 5.7, 7], 'Control Room']]),
+  B(mSeis, V3(0, 4.5, 0), 44, -14, 10, [[[6, 6.6, 0], 'Jawfix®'], [[-6, 5.0, 3.55], 'AllDrift®']]),
+  B(mConn, V3(10.5, 6.5, 2), 50, -26, 12, [[[0, 9.4, 0], 'Sensori nel pilastro'], [[1.2, 11.9, 0], 'Trasmettitore sul tetto'], [[8, 16.8, -3], 'Cloud'], [[8.5, 8.6, 7], 'Control Room']]),
   B(mGreen, V3(18, 4, 15), 64, -40, 24, [[[9, 9.8, 4], 'Fotovoltaico senza forare il manto'], [[27, 9.2, 11], 'Tetto verde · deflusso −70%']]),
 ];
 beats.forEach((b, i) => b.m.beat = i);
@@ -916,22 +940,26 @@ cfgRebuild(); mCfg.t = REDUCED ? 1 : 0; cuSync();
 
 /* ---------- UI: seismic (magnitude) ---------- */
 const S = mSeis.seis;
-const seMode = $('#seMode'), seI = $('#seI');
+const seI = $('#seI');
 const magText = M => 'M ' + M.toFixed(1).replace('.', ',');
 const magWord = M => M < 5 ? 'avvertito' : M < 6 ? 'danni lievi' : M < 7 ? 'forte' : 'molto forte';
-seMode.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; seMode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); S.mode = b.dataset.m; S.reset(); });
+$('#swJ').addEventListener('change', e => { S.jaw = e.target.checked; S.reset(); });
+$('#swA').addEventListener('change', e => { S.all = e.target.checked; S.reset(); });
 seI.addEventListener('input', () => { const M = +seI.value; S.I = 1 + (M - 4) * 2.25; $('#seIo').textContent = magText(M); });
 seI.dispatchEvent(new Event('input'));
 $('#seGo').addEventListener('click', () => S.start());
-const fm = v => v.toFixed(3).replace('.', ',') + ' m';
+const fm = v => v.toFixed(2).replace('.', ',');
 function seUI() {
-  const cap = S.cap(), M = +seI.value;
-  $('#seC').textContent = cap.toFixed(2).replace('.', ',') + ' m';
-  $('#seD').textContent = fm(S.running || S.failed || S.peak ? S.peak : 0);
-  const r = S.peak / cap, mt = $('#seM'); mt.style.width = clamp(r, 0, 1) * 100 + '%'; mt.className = r >= 1 ? 'bad' : r > .6 ? 'warn' : '';
+  const M = +seI.value, cb = S.cap(), cp = S.capP();
+  $('#seD').textContent = `${fm(S.peak)} / ${fm(cb)} m`; $('#seC').textContent = `${fm(S.ppeak)} / ${fm(cp)} m`;
+  $('#seD').parentElement.classList.toggle('bad', S.failed); $('#seC').parentElement.classList.toggle('bad', S.pfail);
+  const r = Math.max(S.peak / cb, S.ppeak / cp), mt = $('#seM'); mt.style.width = clamp(r, 0, 1) * 100 + '%'; mt.className = r >= 1 ? 'bad' : r > .6 ? 'warn' : '';
   const st = $('#seS');
-  if (S.failed) { st.textContent = S.mode === 'alldrift' ? 'Oltre la capacità di progetto: anche AllDrift® ha un limite.' : 'Collasso: la trave perde l’appoggio.'; st.className = 'status bad'; }
-  else if (S.t > 4.5 && !S.running || S.t > 9) { st.textContent = 'Struttura integra. La trave ha scorso e resta in appoggio.'; st.className = 'status ok'; }
+  if (S.failed || S.pfail) {
+    const bits = [S.failed ? 'la trave perde l’appoggio' : '', S.pfail ? 'il pannello si stacca' : ''].filter(Boolean).join(' e ');
+    st.textContent = (S.jaw || S.all ? 'Oltre la capacità di progetto: ' : 'Senza dispositivi: ') + bits + '.'; st.className = 'status bad';
+  }
+  else if (S.t > 4.5 && !S.running || S.t > 9) { st.textContent = 'Struttura integra: la trave resta sul pilastro e il pannello è intatto.'; st.className = 'status ok'; }
   else if (S.running) { st.textContent = 'Scossa in corso…'; st.className = 'status warn'; }
   else if (S.t < 0) { st.textContent = `Premi “Scuoti”. ${magText(M)}: ${magWord(M)}.`; st.className = 'status'; }
 }
@@ -1039,7 +1067,8 @@ function tick(now) {
       b.labels.forEach(l => {
         tmp.copy(l.p).project(camera);
         const x = (tmp.x * .5 + .5) * vw, y = (-tmp.y * .5 + .5) * vh;
-        l.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-12px,-50%)`;
+        const ox2 = l.el.classList.contains('open') ? Math.min(x, vw - 310) : x;
+        l.el.style.transform = `translate(${ox2.toFixed(1)}px,${y.toFixed(1)}px) translate(-12px,-50%)`;
         const covered = vw > 900 ? x < Math.min(560, vw * .4) : y > vh * .5;
         l.el.classList.toggle('on', show && tmp.z < 1 && !covered);
       });
