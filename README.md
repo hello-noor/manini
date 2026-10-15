@@ -20,3 +20,8 @@ poi apri http://localhost:8765. Serve internet per three.js (CDN) e i font Googl
 - `scene.js`: scena three.js, camera guidata dallo scroll, simulazione sisma, Manini Connect
 
 Colori del brand: blu `#00498a`, bianco, nero, grigi.
+
+## Dati della mappa
+
+`data/projects.json` contiene i 140 progetti (121 nuove realizzazioni, 19 riqualificazioni) letti dalle pagine pubbliche di manini.it. Le coordinate sono ricavate dal nome della località con OpenStreetMap Nominatim, quindi sono approssimate al comune. È una fotografia: non si aggiorna da sola.
+`data/italy.json` sono i confini regionali semplificati (openpolis/geojson-italy).
