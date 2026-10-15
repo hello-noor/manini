@@ -403,7 +403,7 @@ function buildSolai(ox) {
   const pk = [0].map(k => { const e = extrudeX(pokerShape(.32), len, M.concrete); e.position.set(0, y0, Z.pk + k * 1.2); m.add(e, .2 + k * .05, up); return e; });
   const pi = extrudeX(piShape(.6), len, M.concrete); pi.position.set(0, y0, Z.pi); m.add(pi, .45, up);
   const mkBox = (zc, ribs, wBox, wFl) => { const g = new THREE.Group(); g.position.set(0, y0, zc); m.add(g, .6, up); const lam = []; g.userData = { ribs, wBox, wFl }; return g; };
-  const so = mkBox(Z.so, [.65, 1.85], .62, .84), pl = mkBox(Z.pl, [.38, 1.25, 2.12], .42, .76);
+  const so = mkBox(Z.so, [.42, 2.08], .62, .84), pl = mkBox(Z.pl, [.38, 1.25, 2.12], .42, .76);
   const fill = (g, th) => {
     while (g.children.length) { const c = g.children.pop(); c.geometry && c.geometry.dispose(); }
     const { ribs, wBox, wFl } = g.userData, parts = boxRibGeoms(th, ribs, wBox, wFl, len);
@@ -416,6 +416,7 @@ function buildSolai(ox) {
   m.setPoker = th => { pk.forEach(e => { e.geometry.dispose(); e.geometry = extrudeXGeo(pokerShape(th), len); }); };
   m.setPi = th => { pi.geometry.dispose(); pi.geometry = extrudeXGeo(piShape(th), len); };
   m.setSolman = th => fill(so, th); m.setPluriman = th => fill(pl, th);
+  m.widths = () => { const w = o => { o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o); return Math.round((b.max.z - b.min.z) * 100); }; return [w(pk[0]), w(pi), w(so), w(pl)]; };
   m.Z = Z;
   return m;
 }
@@ -830,7 +831,7 @@ const SOC = [
 ];
 const soT = $('#soT'); let soCur = 0;
 const soLab = (i, th) => { const c = SOC[i], lb = beats[6].labels[i]; lb.el.querySelector('b').textContent = `${c.lab} · ${c.txt(c.val)} · largo ${c.w}`; lb.p.y = 1.1 + th + .35; };
-function soApply() { const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v); mSolai[c.fn](th); $('#soTo').textContent = c.txt(v); $('#soW').textContent = c.w + ' cm'; $('#soM').textContent = soCur === 0 ? '1 lastra, meno della metà' : '1 elemento intero'; soLab(soCur, th); }
+function soApply() { const c = SOC[soCur], v = +soT.value; c.val = v; const th = c.th(v); mSolai[c.fn](th); $('#soTo').textContent = c.txt(v); $('#soW').textContent = c.w + ' cm'; $('#soM').textContent = mSolai.widths()[soCur] + ' cm, 1 elemento'; soLab(soCur, th); }
 function soSet(i) {
   soCur = i; const c = SOC[i];
   soT.min = c.min; soT.max = c.max; soT.step = c.step; soT.value = c.val;
