@@ -83,12 +83,12 @@ const M = {
 class Model {
   constructor(ox, oz = 0) {
     this.g = new THREE.Group(); this.g.position.set(ox, 0, oz); scene.add(this.g);
-    this.pieces = []; this.t = REDUCED ? 1 : 0; this.target = 0; this.speed = .5; this.origin = V3(ox, 0, oz);
+    this.pieces = []; this.ex = 0; this.exT = 0; this.t = REDUCED ? 1 : 0; this.target = 0; this.speed = .5; this.origin = V3(ox, 0, oz);
   }
-  add(mesh, delay = 0, from = V3(0, 16, 0), parent = this.g) {
+  add(mesh, delay = 0, from = V3(0, 16, 0), parent = this.g, exp = null) {
     if (!mesh.userData.ns) mesh.castShadow = mesh.material !== M.glass; mesh.receiveShadow = true;
     parent.add(mesh);
-    this.pieces.push({ m: mesh, home: mesh.position.clone(), off: from.clone().add(V3((Math.random() - .5) * 5, 0, (Math.random() - .5) * 5)), delay });
+    this.pieces.push({ m: mesh, home: mesh.position.clone(), off: from.clone().add(V3((Math.random() - .5) * 5, 0, (Math.random() - .5) * 5)), delay, exp });
     return mesh;
   }
   still(mesh, parent = this.g) { mesh.receiveShadow = true; parent.add(mesh); return mesh; }
@@ -99,9 +99,11 @@ class Model {
   update(dt) {
     const d = this.target - this.t;
     this.t += Math.sign(d) * Math.min(Math.abs(d), dt * this.speed * (d < 0 ? 2.2 : 1));
+    this.ex += (this.exT - this.ex) * Math.min(1, dt * 4);
     for (const p of this.pieces) {
       const k = eo(clamp((this.t * 1.5 - p.delay) / .5, 0, 1));
       p.m.position.copy(p.home).addScaledVector(p.off, 1 - k);
+      if (p.exp) p.m.position.addScaledVector(p.exp, this.ex);
       p.m.visible = k > .002;
     }
   }
@@ -127,23 +129,45 @@ function buildOndal(ox, o = {}) {
   const slab = box(W + 4, .3, D + 4, M.concreteD, cx, -.15, cz); m.still(slab);
   const zs = Array.from({ length: nz + 1 }, (_, j) => j * pitch);
   let n = 0; const nc = rows.length * zs.length;
-  for (const x of rows) for (const z of zs) { m.add(box(.8, colH, .8, M.concrete, x, colH / 2, z), (n++ / nc) * .22, V3(0, 20, 0)); }
+  m.dyn = { right: [], span: [], slab, L0: rows[1] - rows[0] - .6, W }; m.glassStrips = [];
+  const xr = rows[rows.length - 1];
+  for (const x of rows) for (const z of zs) { const c = m.add(box(.8, colH, .8, M.concrete, x, colH / 2, z), (n++ / nc) * .22, V3(0, 20, 0)); if (x === xr) m.dyn.right.push(c); }
   n = 0;
-  for (const x of rows) for (let j = 0; j < nz; j++) m.add(box(.7, 1.2, pitch - .8, M.concrete, x, colH - .6, zs[j] + pitch / 2), .22 + (n++ / (rows.length * nz)) * .2, V3(0, 20, 0));
+  for (const x of rows) for (let j = 0; j < nz; j++) { const b = m.add(box(.7, 1.2, pitch - .8, M.concrete, x, colH - .6, zs[j] + pitch / 2), .22 + (n++ / (rows.length * nz)) * .2, V3(0, 20, 0)); if (x === xr) m.dyn.right.push(b); }
   const y0 = colH - .75, H = 2.3, L0 = .55, T = .22;
   const roofs = { pv: [], green: [], tegoli: [] };
   n = 0; const nt = (rows.length - 1) * nz;
   for (let i = 0; i < rows.length - 1; i++) {
     const L = rows[i + 1] - rows[i] - .6, xm = (rows[i] + rows[i + 1]) / 2;
+    if (o.roof === 'tau' || o.roof === 'plan') {
+      if (o.roof === 'tau') {
+        const nT = Math.max(2, Math.round(D / 5));
+        const prof = x => .55 + 1.05 * (1 - Math.pow(2 * x / L, 2));
+        const shp = new THREE.Shape(); shp.moveTo(-L / 2, 0); shp.lineTo(L / 2, 0);
+        for (let q = 0; q <= 30; q++) { const x = L / 2 - (q / 30) * L; shp.lineTo(x, prof(x)); } shp.closePath();
+        for (let q = 0; q <= nT; q++) {
+          const g = new THREE.ExtrudeGeometry(shp, { depth: 1, bevelEnabled: false }); g.translate(0, 0, -.5);
+          const bm = new THREE.Mesh(g, M.concrete); bm.position.set(xm, colH, q * D / nT); m.add(bm, .42 + (q / (nT + 1)) * .4);
+        }
+        m.stat = { name: 'Travi TAU', n: (rows.length - 1) * (nT + 1) };
+      } else {
+        const cnt = Math.max(3, Math.floor(D / 2.4) + 1);
+        const Tp = poly([[-.12, 0], [.12, 0], [.12, .55], [.5, .55], [.5, .8], [-.5, .8], [-.5, .55], [-.12, .55]]);
+        for (let q = 0; q < cnt; q++) { const t = extrudeX(Tp, L, M.concrete); t.position.set(xm, colH, q * D / (cnt - 1)); m.add(t, .42 + (q / cnt) * .4); }
+        m.add(box(L + .6, .14, D + 1.2, M.membrane, xm, colH + .87, D / 2), .88, V3(0, 16, 0));
+        m.stat = { name: 'Travi a T', n: (rows.length - 1) * cnt };
+      }
+      continue;
+    }
     for (let j = 0; j < nz; j++) {
       const dl = .42 + (n++ / nt) * .4;
       const z0 = zs[j];
       if (!flat) {
         const sh = poly([[0, L0], [pitch, H], [pitch, H - T], [0, L0 - T]]);
-        const t = extrudeX(sh, L, M.concrete); t.position.set(xm, y0, z0); m.add(t, dl);
-        m.add(box(L, L0 - T, .32, M.concrete, xm, y0 + (L0 - T) / 2, z0 + .18), dl + .02);
-        m.add(box(L, H - T, .32, M.concrete, xm, y0 + (H - T) / 2, z0 + pitch - .18), dl + .02);
-        const gl = box(L, H - L0, .07, M.glass, xm, y0 + L0 + (H - L0) / 2, z0 + pitch - .02); m.add(gl, dl + .1);
+        const t = extrudeX(sh, L, M.concrete); t.position.set(xm, y0, z0); m.add(t, dl); m.dyn.span.push(t);
+        m.dyn.span.push(m.add(box(L, L0 - T, .32, M.concrete, xm, y0 + (L0 - T) / 2, z0 + .18), dl + .02));
+        m.dyn.span.push(m.add(box(L, H - T, .32, M.concrete, xm, y0 + (H - T) / 2, z0 + pitch - .18), dl + .02));
+        const gl = box(L, H - L0, .07, M.glass, xm, y0 + L0 + (H - L0) / 2, z0 + pitch - .02); m.add(gl, dl + .1); m.dyn.span.push(gl); m.glassStrips.push({ x0: xm - L / 2, x1: xm + L / 2, z: z0 + pitch - .02, yb: y0 + L0, yt: y0 + H });
         if (o.pv) {
           const ang = Math.atan((H - L0) / pitch);
           const p = box(L - 1, .05, pitch - 1.2, M.pv, xm, y0 + (H + L0) / 2 + .1, z0 + pitch / 2); p.rotation.x = -ang; m.add(p, dl + .12); roofs.pv.push(p);
@@ -170,11 +194,18 @@ function buildOndal(ox, o = {}) {
     }
   }
   if (walls) {
-    const pw = (W) / 8, ph = 2.5; let k = 0;
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 8; c++) m.add(box(pw - .04, ph - .04, .3, M.panel, pw * c + pw / 2, ph * r + ph / 2, -.5), .78 + (k++ / 24) * .2, V3(0, 0, -26));
-    const pd = D / 5; k = 0;
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) m.add(box(.3, ph - .04, pd - .04, M.panel, W + .5, ph * r + ph / 2, pd * c + pd / 2), .8 + (k++ / 15) * .18, V3(26, 0, 0));
+    const ph = 2.5, nR = Math.max(2, Math.floor((colH - .5) / ph)), nW = Math.max(3, Math.round(W / 5)), pw = W / nW; let k = 0;
+    for (let r = 0; r < nR; r++) for (let c = 0; c < nW; c++) m.add(box(pw - .04, ph - .04, .3, M.panel, pw * c + pw / 2, ph * r + ph / 2, -.5), .78 + (k++ / (nR * nW)) * .2, V3(0, 0, -26));
+    const nD = Math.max(3, Math.round(D / 5)), pd = D / nD; k = 0;
+    for (let r = 0; r < nR; r++) for (let c = 0; c < nD; c++) m.add(box(.3, ph - .04, pd - .04, M.panel, W + .5, ph * r + ph / 2, pd * c + pd / 2), .8 + (k++ / (nR * nD)) * .18, V3(26, 0, 0));
   }
+  m.setSpan = S => {
+    const ph = mesh => m.pieces.find(p => p.m === mesh);
+    m.dyn.right.forEach(c => { ph(c).home.x = S; });
+    m.dyn.span.forEach(c => { ph(c).home.x = S / 2; c.scale.x = (S - .6) / m.dyn.L0; });
+    m.dyn.slab.scale.x = (S + 4) / (m.dyn.W + 4); m.dyn.slab.position.x = S / 2;
+  };
+  if (!m.stat) m.stat = { name: 'Tegoli', n: (rows.length - 1) * nz };
   m.roofs = roofs;
   return m;
 }
@@ -209,12 +240,13 @@ function buildTau(ox) {
   const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x7fc4ff, size: .22, transparent: true, opacity: .95, depthWrite: false }));
   pts.frustumCulled = false; m.g.add(pts);
   const drops = Array.from({ length: NP }, () => ({ b: zsB[(Math.random() * 4) | 0], x: (Math.random() * 2 - 1) * L / 2, s: Math.random() < .5 ? -1 : 1, f: -1, v: 0 }));
+  m.rainN = NP;
   m.rain = dt => {
     drops.forEach((d, i) => {
       if (d.f >= 0) { d.v += 12 * dt; d.f += d.v * dt; if (d.f > colH + .5) { d.x = (Math.random() * 2 - 1) * 2; d.f = -1; d.s = Math.random() < .5 ? -1 : 1; d.b = zsB[(Math.random() * 4) | 0]; } }
       else { d.x += d.s * (1.2 + Math.abs(d.x) * .35) * dt * 2.2; if (Math.abs(d.x) > L / 2) { d.x = d.s * L / 2; d.f = 0; d.v = 0; } }
       const x = d.x, y = d.f >= 0 ? colH + prof(clamp(x, -L / 2, L / 2)) - d.f : colH + prof(x) + .05;
-      pos[i * 3] = x; pos[i * 3 + 1] = Math.max(.05, y); pos[i * 3 + 2] = d.b + (Math.random() - .5) * .02 + ((i % 7) - 3) * .06;
+      pos[i * 3] = x; pos[i * 3 + 1] = i >= m.rainN ? -80 : Math.max(.05, y); pos[i * 3 + 2] = d.b + (Math.random() - .5) * .02 + ((i % 7) - 3) * .06;
     });
     geo.attributes.position.needsUpdate = true;
   };
@@ -226,26 +258,23 @@ function buildPlan(ox) {
   const m = new Model(ox); m.stage(30);
   m.g.userData.center = V3(0, 5, 0);
   m.still(box(26, .3, 18, M.concreteD, 0, -.15, 0));
-  const px = 9, pz = 6, H = 8;
+  const px = 9, pz = 6, H = 8, up = V3(0, 20, 0), E = h => V3(0, h, 0);
   let n = 0;
   for (const x of [-px, px]) for (const z of [-pz, pz]) {
-    m.add(box(.9, H, .9, M.concrete, x, H / 2, z), (n++ / 4) * .2, V3(0, 20, 0));
-    m.add(box(1.5, .5, 1.1, M.concreteD, x, H + .25, z), .22, V3(0, 20, 0));
+    m.add(box(.9, H, .9, M.concrete, x, H / 2, z), (n++ / 4) * .2, up);
+    m.add(box(1.5, .5, 1.1, M.concreteD, x, H + .25, z), .22, up, m.g, E(2));
   }
-  // main prestressed beams along z
   n = 0;
   for (const x of [-px, px]) {
-    const b = box(.8, 1.2, pz * 2 - .5, M.concrete, x, H + .5 + .6, 0); m.add(b, .34 + (n++) * .05, V3(0, 20, 0));
-    // prestress strands glowing under the beam
-    const s = box(.1, .1, pz * 2 - 1, M.glow, x, H + .65, 0); s.userData.ns = true; m.add(s, .4, V3(0, 20, 0));
+    m.add(box(.8, 1.2, pz * 2 - .5, M.concrete, x, H + .5 + .6, 0), .34 + (n++) * .05, up, m.g, E(5));
+    const s = box(.1, .1, pz * 2 - 1, M.glow, x, H + .65, 0); s.userData.ns = true; m.add(s, .4, up, m.g, E(5));
   }
-  // secondary T beams along x
   const T = poly([[-.12, 0], [.12, 0], [.12, .55], [.5, .55], [.5, .8], [-.5, .8], [-.5, .55], [-.12, .55]]);
   const top = H + .5 + 1.2;
   [-4.8, -2.4, 0, 2.4, 4.8].forEach((z, i) => {
-    const t = extrudeX(T, px * 2 - .6, M.concrete); t.position.set(0, top, z); m.add(t, .55 + i * .04, V3(0, 20, 0));
+    const t = extrudeX(T, px * 2 - .6, M.concrete); t.position.set(0, top, z); m.add(t, .55 + i * .04, up, m.g, E(9));
   });
-  const mem = box(px * 2 + 1.8, .14, pz * 2 + 1.2, M.membrane, 0, top + .87, 0); m.add(mem, .86, V3(0, 16, 0));
+  m.add(box(px * 2 + 1.8, .14, pz * 2 + 1.2, M.membrane, 0, top + .87, 0), .86, V3(0, 16, 0), m.g, E(13));
   return m;
 }
 
@@ -294,9 +323,9 @@ function buildSeismic(ox) {
   const capL = [-2.5, 2.5].map(z => { const c = box(1.3, .25, 1.2, M.concreteD, 0, 0, z); m.g.add(c); return c; });
   const capR = [-2.5, 2.5].map(z => { const c = box(1.8, .25, 1.4, M.concreteD, 0, 0, z); m.g.add(c); return c; });
   const S = {
-    t: -1, mode: 'rigid', I: 5, xg: 0, vg: 0, uL: 0, vL: 0, uR: 0, vR: 0, failed: false, fall: 0, fv: 0, peak: 0, running: false, d: 0,
+    t: -1, mode: 'rigid', I: 5.5, xg: 0, vg: 0, uL: 0, vL: 0, uR: 0, vR: 0, failed: false, fall: 0, fv: 0, peak: 0, running: false, d: 0,
   };
-  const VX = 5, CAP = { rigid: .10, alldrift: .34 };
+  const VX = 5, CAP = { rigid: .10, alldrift: .38 };
   const ag = t => {
     if (t < 0) return 0;
     const env = Math.min(1, t / .6) * Math.exp(-Math.max(0, t - 3.4) / 1.1);
@@ -408,43 +437,80 @@ function buildConnect(ox) {
 
 /* ---------- build everything ---------- */
 const STEP = 140;
+const CF = { x: 2, z: 3, h: 9, roof: 'shed' };
+const cfgOpts = () => {
+  const o = { rows: Array.from({ length: CF.x + 1 }, (_, i) => i * 20), nz: CF.z, colH: CF.h, walls: true };
+  if (CF.roof === 'pv') o.pv = true;
+  if (CF.roof === 'flat') { o.flat = true; o.roofKinds = ['pv', 'green']; }
+  if (CF.roof === 'tau' || CF.roof === 'plan') o.roof = CF.roof;
+  return o;
+};
 const mOndal = buildOndal(0, { rows: [0, 20, 40], nz: 3, colH: 9, R: 44 });
 const mOndalP = buildOndal(STEP, { rows: [0, 32], nz: 2, colH: 10.5, walls: false, R: 38 });
 const mTau = buildTau(STEP * 2);
 const mPlan = buildPlan(STEP * 3);
 const mSolai = buildSolai(STEP * 4);
+let mCfg = buildOndal(STEP * 8, cfgOpts());
 const mSeis = buildSeismic(STEP * 5);
 const mConn = buildConnect(STEP * 6);
 const mGreen = buildOndal(STEP * 7, { rows: [0, 18, 36], nz: 4, colH: 8, walls: false, flat: true, roofKinds: ['pv', 'green'], R: 40 });
-const models = [mOndal, mOndalP, mTau, mPlan, mSolai, mSeis, mConn, mGreen];
-// a small orange Ondal+ slab label model needs the centre of mOndalP
-mOndalP.g.userData.center = V3(16, 0, 7.5);
-mOndal.g.userData.center = V3(20, 0, 11);
-mGreen.g.userData.center = V3(18, 0, 15);
+const models = [mOndal, mOndalP, mTau, mPlan, mSolai, mCfg, mSeis, mConn, mGreen];
+
+/* ---------- label texts (click to expand) ---------- */
+const INFO = {
+  'Shed vetrato · luce naturale': 'Il vetro dello shed porta luce naturale dentro il capannone, con meno illuminazione artificiale. Lo shed e il tetto piano possono convivere sullo stesso tetto.',
+  'Tegoli · interasse 5,00–7,50 m': 'I tegoli sono gli elementi di copertura in cemento armato. Sono progettati, prodotti e impermeabilizzati in fabbrica, con isolamento integrato che evita la condensa.',
+  'Pilastri prefabbricati': 'Pilastri in c.a. prodotti in stabilimento e montati in cantiere. Possono integrare già in produzione i sensori di Manini Connect.',
+  'Luce fino a 32 m': 'Ondal+ porta il tegolo fino a 32 m tra i pilastri: meno pilastri, meno plinti, più superficie utile in pianta.',
+  'Maglia 25 × 25 m e oltre': 'Maglie di pilastri di 25 × 25 m, anche maggiori nei casi speciali, con ancoraggi sismici pensati per le grandi maglie.',
+  'Estradosso parabolico': 'La parte superiore curva, larga 80–120 cm, favorisce il deflusso dell’acqua e un’impermeabilizzazione ottimale.',
+  'Intradosso piano': 'Il lato inferiore è rettilineo: permette controsoffitti piani, finiture interne varie e impianti sopra il controsoffitto.',
+  'Deflusso dell’acqua': 'Luci da 12 a 32 m. TAU unisce i vantaggi di una copertura piana e di una a doppia pendenza.',
+  'Pilastro': 'Pilastro prefabbricato in c.a.: la base di Manini Plan per edifici industriali, espositivi e commerciali.',
+  'Trave principale precompressa': 'Trave principale in cemento armato precompresso: i trefoli tesi in fabbrica la rendono più snella e resistente a parità di sezione.',
+  'Trave secondaria a T': 'Travi secondarie a sezione a T, anch’esse precompresse, appoggiate sulle travi principali.',
+  'Manto isolante continuo': 'Un manto continuo di coibentazione e impermeabilizzazione, personalizzabile in base al livello di isolamento richiesto.',
+  'Poker · 20–50 cm': 'Solaio alveolare estruso in 10 spessori da 20 a 50 cm: rigido, resistente al fuoco, con intradosso piano. Per edifici multipiano, parcheggi e uffici.',
+  'PI-Greco · 40–80 cm': 'Solaio classico largo 250 cm, spessori 40–80 cm. Grandi aperture facili, anche lucernari. Resistenza al fuoco R120.',
+  'Pluriman · Solman': 'Per grandi luci e carichi importanti: lamiera collaborante sotto la soletta, spessori 60, 75 e 90 cm, intradosso piano.',
+  'Sensori nel pilastro': 'Sensori di ultima generazione integrati nei pilastri durante la produzione: rilevano anomalie statiche e dinamiche dei carichi.',
+  'Trasmettitore sul tetto': 'Una scatola di trasmissione sul tetto raccoglie i dati dei sensori e li invia al cloud.',
+  'Cloud': 'I dati arrivano in tempo reale. Gli algoritmi segnalano subito le anomalie e inviano avvisi o allarmi dopo sisma, bombe d’acqua o vento eccezionale.',
+  'Control Room': 'La Control Room Manini riceve segnali e anomalie. Il sistema è brevettato e ha vinto il premio IoT ai Digital360 Awards 2018.',
+  'Fotovoltaico senza forare il manto': 'Il telaio dei pannelli si fissa senza forare l’impermeabilizzazione. Con Ondal Powershed® il fotovoltaico è integrato in gusci in cemento.',
+  'Ondal Powershed®': 'Guscio in cemento con pannelli fotovoltaici su un telaio metallico intermedio. I collegamenti elettrici tra gusci si fanno in opera, senza lavorare in quota.',
+  'Tetto verde · deflusso −70%': 'Un tetto verde può ridurre fino al 70% il deflusso delle acque piovane, abbassa i costi di riscaldamento e raffrescamento, filtra le polveri sottili e riduce l’isola di calore.',
+};
+const labelHost = $('#labels');
+const closeTags = () => labelHost.querySelectorAll('.tag.open').forEach(x => x.classList.remove('open'));
+document.addEventListener('click', closeTags);
+function mkLabel(p, t) {
+  const info = INFO[t], el = document.createElement('div'); el.className = 'tag';
+  el.innerHTML = `<b>${t}</b>` + (info ? `<i>+</i><div class="body">${info}</div>` : '');
+  labelHost.appendChild(el);
+  if (info) el.addEventListener('click', e => { e.stopPropagation(); const was = el.classList.contains('open'); closeTags(); if (!was) el.classList.add('open'); });
+  return { p, t, el };
+}
 
 /* ---------- beats (camera + labels) ---------- */
 const O = m => m.origin;
-const B = (m, c, d, az, el, labels = [], mi = m) => ({ m: mi, c: O(m).clone().add(c), d, az, el, labels: labels.map(([p, t]) => ({ p: O(m).clone().add(V3(...p)), t })) });
+const B = (m, c, d, az, el, labels = []) => ({ m, c: O(m).clone().add(c), d, az, el, labels: labels.map(([p, t]) => mkLabel(O(m).clone().add(V3(...p)), t)) });
 const beats = [
   B(mOndal, V3(18, 4.5, 11), 92, -36, 21),
   B(mOndal, V3(24, 8.5, 9), 58, -62, 11, [[[12, 10.3, 15], 'Shed vetrato · luce naturale'], [[30, 9.2, 7.5], 'Tegoli · interasse 5,00–7,50 m'], [[0, 5, 22.5], 'Pilastri prefabbricati']]),
   B(mOndalP, V3(16, 6, 7.5), 74, -34, 18, [[[16, 11.6, 0], 'Luce fino a 32 m'], [[32, 5, 15], 'Maglia 25 × 25 m e oltre']]),
   B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua']]),
   B(mPlan, V3(0, 7.5, 0), 48, -42, 22, [[[-9, 4, 6], 'Pilastro'], [[9, 9.6, 0], 'Trave principale precompressa'], [[0, 11.2, -2.4], 'Trave secondaria a T'], [[-5, 11.2, 6], 'Manto isolante continuo']]),
-  B(mSolai, V3(5, 1.6, -2.4), 15, 76, 6, [[[5, 1.3, -6.3], 'Poker · 20–50 cm'], [[5, 2.0, 2.0], 'PI-Greco · 40–80 cm']]),
+  B(mSolai, V3(5, 1.6, -5.5), 15, 76, 6, [[[5, 1.3, -6.3], 'Poker · 20–50 cm'], [[5, 2.0, 2.0], 'PI-Greco · 40–80 cm'], [[5, 1.9, 5.5], 'Pluriman · Solman']]),
+  B(mCfg, V3(20, 5, 11), 80, -36, 22),
   B(mSeis, V3(0, 4.5, 0), 40, 0, 8, []),
   B(mConn, V3(8, 6.5, 2), 48, -26, 12, [[[0, 9.4, 0], 'Sensori nel pilastro'], [[1.2, 11.9, 0], 'Trasmettitore sul tetto'], [[9, 16.8, -3], 'Cloud'], [[18, 5.7, 7], 'Control Room']]),
   B(mGreen, V3(18, 4, 15), 64, -40, 24, [[[9, 9.8, 4], 'Fotovoltaico senza forare il manto'], [[27, 9.2, 11], 'Tetto verde · deflusso −70%']]),
 ];
 beats.forEach((b, i) => b.m.beat = i);
-const beatModel = beats.map(b => b.m);
-
-/* ---------- labels ---------- */
-const labelHost = $('#labels');
-beats.forEach(b => b.labels.forEach(l => { l.el = document.createElement('div'); l.el.className = 'tag'; l.el.textContent = l.t; labelHost.appendChild(l.el); }));
 
 /* ---------- scroll mapping ---------- */
-let anchors = [], vw = innerWidth, vh = innerHeight;
+let anchors = [], vw = innerWidth, vh = innerHeight, ranges = [];
 function measure() {
   vw = innerWidth; vh = innerHeight;
   anchors = [...document.querySelectorAll('[data-beat]')].map(el => ({ i: +el.dataset.beat, y: el.getBoundingClientRect().top + scrollY + el.offsetHeight / 2 })).sort((a, b) => a.i - b.i);
@@ -455,7 +521,7 @@ function measure() {
 let offX = 0, offY = 0;
 function layoutView() {
   const wide = vw > 900;
-  offX = wide ? vw * .15 : 0; offY = wide ? 0 : -vh * .2;
+  offX = wide ? vw * .15 : 0; offY = wide ? 0 : -vh * .22;
   camera.setViewOffset(vw, vh, -offX, -offY, vw, vh);
 }
 function frac() {
@@ -471,29 +537,178 @@ function frac() {
 addEventListener('resize', measure);
 addEventListener('load', () => { measure(); setTimeout(measure, 600); });
 document.fonts && document.fonts.ready.then(measure);
-
-let ranges = [];
 const inView = () => ranges.some(r => r[1] > scrollY - vh * .1 && r[0] < scrollY + vh * 1.1);
 let mx = 0, my = 0;
 addEventListener('pointermove', e => { mx = (e.clientX / vw - .5) * 2; my = (e.clientY / vh - .5) * 2; });
+const fmt = (n, d = 0) => n.toLocaleString('it-IT', { minimumFractionDigits: d, maximumFractionDigits: d });
 
-/* ---------- UI: seismic ---------- */
+/* ---------- UI: system tabs + replay ---------- */
+const tabs = $('#systabs');
+tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b) document.querySelector(`[data-beat="${b.dataset.b}"]`).scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+document.querySelectorAll('.replay').forEach(b => b.addEventListener('click', () => { beats[+b.dataset.b].m.t = 0; }));
+
+/* ---------- UI: Ondal sun (animated) + light shafts ---------- */
+const sun = { play: true, h: 8 };
+const sunVec = h => { const k = clamp((h - 7) / 12, 0, 1), az = lerp(-75, 75, k) * Math.PI / 180, el = (10 + 52 * Math.sin(Math.PI * k)) * Math.PI / 180; return { v: V3(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)), deg: el * 180 / Math.PI }; };
+const fmtH = h => { const hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return `${hh}:${String(mm).padStart(2, '0')}`; };
+const snT = $('#snT'), snP = $('#snP');
+snT.addEventListener('input', () => { sun.play = false; sun.h = +snT.value; snP.textContent = '▶'; });
+snP.addEventListener('click', () => { sun.play = !sun.play; snP.textContent = sun.play ? '⏸' : '▶'; });
+function sunUI(sv) {
+  $('#snO').textContent = fmtH(sun.h);
+  const direct = sv.deg > 14 ? clamp(sv.v.z / .5, 0, 1) : 0;
+  $('#snM').style.width = Math.round(direct * 100) + '%';
+  $('#snS').textContent = direct > .05 ? `Sole a ${Math.round(sv.deg)}°: la luce entra dalle vetrate dello shed (${Math.round(direct * 100)}%).` : `Sole a ${Math.round(sv.deg)}°: luce solo diffusa dallo shed.`;
+}
+// visible sun + arc
+const sunTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,250,225,1)'); gr.addColorStop(.18, 'rgba(255,225,150,.95)'); gr.addColorStop(.5, 'rgba(255,190,90,.25)'); gr.addColorStop(1, 'rgba(255,170,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending }));
+sunSprite.scale.setScalar(34); scene.add(sunSprite);
+const arcPts = []; for (let h = 7; h <= 19.01; h += .5) arcPts.push(sunVec(h).v.clone().multiplyScalar(100));
+const sunArc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcPts), new THREE.LineDashedMaterial({ color: 0xffd9a0, dashSize: 2.5, gapSize: 3, transparent: true, opacity: .35, fog: false }));
+sunArc.computeLineDistances(); scene.add(sunArc);
+// light shafts through the shed glazing
+const shafts = mOndal.glassStrips.map(g => {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(36), 3));
+  const col = new Float32Array(36); for (let q = 0; q < 3; q++) { const o = q * 12, a1 = .5, a2 = .08; [a1, a1, a2, a2].forEach((a, vi) => { col[o + vi * 3] = a; col[o + vi * 3 + 1] = a * .85; col[o + vi * 3 + 2] = a * .5; }); }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11]);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  mesh.frustumCulled = false; mesh.visible = false; mOndal.g.add(mesh); return { g, mesh };
+});
+function shaftsUpdate(sv, w) {
+  const on = w > .3 && sv.deg > 14 && sv.v.z > .12;
+  shafts.forEach(({ g, mesh }) => {
+    mesh.visible = on; if (!on) return;
+    const pos = mesh.geometry.attributes.position.array, v = sv.v;
+    const ys = [g.yb, (g.yb + g.yt) / 2, g.yt];
+    ys.forEach((y, q) => {
+      const t = Math.min(y / v.y, g.z / v.z), fx = 0, fz = g.z - v.z * t, fy = y - v.y * t;
+      const o = q * 12;
+      pos.set([g.x0, y, g.z, g.x1, y, g.z, g.x1 + fx, fy, fz, g.x0 + fx, fy, fz], o);
+    });
+    mesh.geometry.attributes.position.needsUpdate = true; mesh.material.opacity = .2 * w;
+  });
+}
+const F = { on: false, t: 0, R: 0 }, FN = 160;
+const firePos = new Float32Array(FN * 3), fireGeo = new THREE.BufferGeometry();
+fireGeo.setAttribute('position', new THREE.BufferAttribute(firePos, 3));
+const firePts = new THREE.Points(fireGeo, new THREE.PointsMaterial({ color: 0xff7a1a, size: 1, transparent: true, opacity: .85, depthWrite: false, blending: THREE.AdditiveBlending }));
+firePts.frustumCulled = false; firePts.visible = false; mOndal.g.add(firePts);
+const fireLight = new THREE.PointLight(0xff5a1a, 0, 45, 1.4); fireLight.position.set(20, 3, 11); mOndal.g.add(fireLight);
+const fireSeed = Array.from({ length: FN }, () => ({ x: 8 + Math.random() * 24, z: 3 + Math.random() * 16, p: Math.random() }));
+$('#fire').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('#fire').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  F.on = true; F.t = 0; F.R = +b.dataset.r;
+});
+function fireUpdate(dt) {
+  const st = $('#fireS');
+  if (F.on) {
+    F.t += dt; const pr = clamp(F.t / 6, 0, 1);
+    st.textContent = `Minuto ${Math.round(pr * F.R)} di ${F.R}: la copertura regge.`; st.className = 'status warn';
+    if (pr >= 1) { F.on = false; st.textContent = `Prova superata: resistenza al fuoco R${F.R} (${F.R} minuti).`; st.className = 'status ok'; }
+  }
+  firePts.visible = F.on;
+  fireLight.intensity = F.on ? 500 * (.75 + .25 * Math.random()) : 0;
+  if (F.on) {
+    fireSeed.forEach((f, i) => { const u = (f.p + time * .7) % 1; firePos[i * 3] = f.x + Math.sin(time * 5 + i) * .5; firePos[i * 3 + 1] = .3 + u * 6.5; firePos[i * 3 + 2] = f.z + Math.cos(time * 4 + i) * .5; });
+    fireGeo.attributes.position.needsUpdate = true;
+  }
+}
+
+/* ---------- UI: Ondal+ span ---------- */
+const mgS = $('#mgS');
+function mgUpdate() {
+  const S2 = +mgS.value; mOndalP.setSpan(S2); $('#mgO').textContent = S2 + ' m';
+  const cols = g => (Math.ceil(96 / g) + 1) * (Math.ceil(48 / 7.5) + 1), c = cols(S2), c0 = cols(12);
+  $('#mgC').textContent = c; $('#mgD').textContent = c === c0 ? '0%' : '−' + Math.round((1 - c / c0) * 100) + '%';
+  const ox = mOndalP.origin.x; beats[2].c.x = ox + S2 / 2; beats[2].labels[0].p.x = ox + S2 / 2; beats[2].labels[1].p.x = ox + S2;
+}
+mgS.addEventListener('input', mgUpdate);
+
+/* ---------- UI: TAU rain ---------- */
+const tuR = $('#tuR');
+tuR.addEventListener('input', () => { const i = +tuR.value; mTau.rainN = Math.round(66 * i / 200) + 4; $('#tuO').textContent = i + ' mm/h'; $('#tuQ').textContent = fmt(i * 480 / 3600, 1) + ' L/s'; });
+tuR.dispatchEvent(new Event('input'));
+
+/* ---------- UI: Plan explode ---------- */
+$('#plEx').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; $('#plEx').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  const x = +b.dataset.x; mPlan.exT = x; beats[4].d = x ? 66 : 48; beats[4].c.y = x ? 13 : 7.5; beats[4].labelsOff = !!x;
+});
+
+/* ---------- UI: Solai selector ---------- */
+const SO = [
+  { z: -5.5, t: '<b>Poker.</b> Alveolare estruso in 10 spessori, da 20 a 50 cm. Rigido, resistente al fuoco, intradosso piano. Per multipiano, parcheggi, uffici.' },
+  { z: 2.1, t: '<b>PI-Greco.</b> Largo 250 cm, spessori 40–80 cm. Grandi aperture e lucernari facili, resistenza al fuoco R120.' },
+  { z: 5.55, t: '<b>Pluriman e Solman.</b> Per grandi luci e carichi importanti: lamiera collaborante, spessori 60, 75 e 90 cm, generalmente R120.' },
+];
+function soSet(i) { beats[5].c.z = mSolai.origin.z + SO[i].z; $('#soI').innerHTML = SO[i].t; }
+$('#soSel').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#soSel').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); soSet(+b.dataset.s); });
+soSet(0);
+
+/* ---------- UI: configurator ---------- */
+const ROOFINFO = {
+  shed: '<b>Ondal shed.</b> Vetri verso l’alto: luce naturale dentro il capannone. Tegoli a interasse 5,00–7,50 m.',
+  pv: '<b>Ondal Powershed®.</b> Lo shed con fotovoltaico integrato su telaio metallico: energia dal tetto, collegamenti in opera senza lavorare in quota.',
+  flat: '<b>Ondal piano.</b> Qui con tetto verde e fotovoltaico a file alterne: acqua trattenuta, meno caldo, energia.',
+  tau: '<b>TAU.</b> Travi con estradosso parabolico e intradosso piano, luci da 12 a 32 m.',
+  plan: '<b>Manini Plan.</b> Travi principali precompresse, travi secondarie a T e manto isolante continuo.',
+};
+const ROOFLAB = {
+  shed: ['Shed vetrato · luce naturale', 'Tegoli · interasse 5,00–7,50 m'],
+  pv: ['Ondal Powershed®', 'Fotovoltaico senza forare il manto'],
+  flat: ['Tetto verde · deflusso −70%', 'Fotovoltaico senza forare il manto'],
+  tau: ['Estradosso parabolico', 'Intradosso piano'],
+  plan: ['Manto isolante continuo', 'Trave secondaria a T'],
+};
+function cfgLabels() {
+  const W = CF.x * 20, D = CF.z * 7.5, c = mCfg.origin, P = (x, y, z) => c.clone().add(V3(x, y, z)), r = ROOFLAB[CF.roof], y = CF.h + 2.6;
+  beats[6].labels.forEach(l => l.el.remove());
+  beats[6].labels = [mkLabel(P(W * .45, y, D * .5), r[0]), mkLabel(P(W * .85, y - .6, D * .15), r[1]), mkLabel(P(0, CF.h * .55, D), 'Pilastri prefabbricati')];
+}
+function cfgUI() {
+  const W = CF.x * 20, D = CF.z * 7.5;
+  $('#cfXo').textContent = `${CF.x} × 20 m`; $('#cfZo').textContent = `${CF.z} × 7,5 m`; $('#cfHo').textContent = CF.h + ' m';
+  $('#cfA').textContent = fmt(W * D) + ' m²'; $('#cfC').textContent = (CF.x + 1) * (CF.z + 1);
+  $('#cfNl').textContent = mCfg.stat.name; $('#cfN').textContent = mCfg.stat.n; $('#cfHh').textContent = fmt(CF.h - 1.2, 1) + ' m';
+  $('#cfInfo').innerHTML = ROOFINFO[CF.roof];
+}
+function cfgRebuild() {
+  const old = mCfg; scene.remove(old.g); old.g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  const nm = buildOndal(STEP * 8, cfgOpts()); nm.t = REDUCED ? 1 : 0; nm.beat = 6; nm.target = 1;
+  models[models.indexOf(old)] = nm; beats[6].m = nm; mCfg = nm;
+  const W = CF.x * 20, D = CF.z * 7.5;
+  beats[6].c.copy(nm.origin).add(V3(W / 2, CF.h * .55, D / 2)); beats[6].d = 40 + (W + D) * .85;
+  cfgLabels(); cfgUI();
+}
+let cfT = 0; const cfgSoon = () => { clearTimeout(cfT); cfT = setTimeout(cfgRebuild, 160); };
+$('#cfRoof').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#cfRoof').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); CF.roof = b.dataset.r; cfgRebuild(); });
+for (const [id, k] of [['#cfX', 'x'], ['#cfZ', 'z'], ['#cfH', 'h']]) $(id).addEventListener('input', e => { CF[k] = +e.target.value; cfgUI(); cfgSoon(); });
+cfgRebuild(); mCfg.t = REDUCED ? 1 : 0;
+
+/* ---------- UI: seismic (magnitude) ---------- */
 const S = mSeis.seis;
 const seMode = $('#seMode'), seI = $('#seI');
+const magText = M => 'M ' + M.toFixed(1).replace('.', ',');
+const magWord = M => M < 5 ? 'avvertito' : M < 6 ? 'danni lievi' : M < 7 ? 'forte' : 'molto forte';
 seMode.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; seMode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); S.mode = b.dataset.m; S.reset(); });
-seI.addEventListener('input', () => { S.I = +seI.value; $('#seIo').textContent = '≈ ' + (S.I * .05).toFixed(2).replace('.', ',') + ' g'; });
+seI.addEventListener('input', () => { const M = +seI.value; S.I = 1 + (M - 4) * 2.25; $('#seIo').textContent = magText(M); });
+seI.dispatchEvent(new Event('input'));
 $('#seGo').addEventListener('click', () => S.start());
 const fm = v => v.toFixed(3).replace('.', ',') + ' m';
 function seUI() {
-  const cap = S.cap();
+  const cap = S.cap(), M = +seI.value;
   $('#seC').textContent = cap.toFixed(2).replace('.', ',') + ' m';
   $('#seD').textContent = fm(S.running || S.failed || S.peak ? S.peak : 0);
   const r = S.peak / cap, mt = $('#seM'); mt.style.width = clamp(r, 0, 1) * 100 + '%'; mt.className = r >= 1 ? 'bad' : r > .6 ? 'warn' : '';
   const st = $('#seS');
-  if (S.failed) { st.textContent = 'Collasso: la trave perde l’appoggio.'; st.className = 'status bad'; }
+  if (S.failed) { st.textContent = S.mode === 'alldrift' ? 'Oltre la capacità di progetto: anche AllDrift® ha un limite.' : 'Collasso: la trave perde l’appoggio.'; st.className = 'status bad'; }
   else if (S.t > 4.5 && !S.running || S.t > 9) { st.textContent = 'Struttura integra. La trave ha scorso e resta in appoggio.'; st.className = 'status ok'; }
   else if (S.running) { st.textContent = 'Scossa in corso…'; st.className = 'status warn'; }
-  else if (S.t < 0) { st.textContent = 'Premi “Scuoti”.'; st.className = 'status'; }
+  else if (S.t < 0) { st.textContent = `Premi “Scuoti”. ${magText(M)}: ${magWord(M)}.`; st.className = 'status'; }
 }
 /* ---------- UI: connect ---------- */
 const cnEv = $('#cnEv');
@@ -505,14 +720,44 @@ cnEv.addEventListener('click', e => {
   const s = $('#cnS'); s.textContent = msg; s.className = 'status warn';
   clearTimeout(cnEv._t); cnEv._t = setTimeout(() => { s.textContent = 'Struttura nei parametri di progetto.'; s.className = 'status ok'; cnEv.querySelectorAll('button').forEach(x => x.classList.remove('on')); }, 6500);
 });
-/* ---------- UI: green ---------- */
+/* ---------- UI: green roof + rain ---------- */
 $('#gnT').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on');
   const on = b.classList.contains('on'); mGreen.roofs[b.dataset.t].forEach(o => o.userData.hide = !on);
 });
+const GR = { on: false, N: 260, drops: [], ct: { sl: 0, sr: 0, gl: 0, gr: 0 }, tx: 0 };
+const grPos = new Float32Array(GR.N * 3), grGeo = new THREE.BufferGeometry();
+grGeo.setAttribute('position', new THREE.BufferAttribute(grPos, 3));
+const grPts = new THREE.Points(grGeo, new THREE.PointsMaterial({ color: 0x7fc4ff, size: .28, transparent: true, opacity: .95, depthWrite: false }));
+grPts.frustumCulled = false; grPts.visible = false; mGreen.g.add(grPts);
+const respawn = d => { d.x = 1 + Math.random() * 34; d.z = .5 + Math.random() * 29; d.y = 14 + Math.random() * 22; d.v = 0; d.s = 0; };
+for (let i = 0; i < GR.N; i++) { const d = {}; respawn(d); GR.drops.push(d); }
+$('#gnRain').addEventListener('click', e => {
+  GR.on = !GR.on; e.target.textContent = GR.on ? 'Ferma la pioggia' : 'Fai piovere'; GR.ct = { sl: 0, sr: 0, gl: 0, gr: 0 }; grPts.visible = GR.on;
+  GR.drops.forEach(respawn);
+});
+function grUpdate(dt) {
+  if (!GR.on) return;
+  const greenOn = !(mGreen.roofs.green[0] && mGreen.roofs.green[0].userData.hide), c = GR.ct;
+  GR.drops.forEach((d, i) => {
+    if (d.s === 0) {
+      d.v += 14 * dt; d.y -= d.v * dt;
+      if (d.y <= 8.4) {
+        const bay = clamp(Math.floor(d.z / 7.5), 0, 3), green = bay % 2 === 1 && greenOn;
+        if (green) { c.gl++; if (Math.random() < .7) { respawn(d); } else { c.gr++; d.s = 1; d.y = 8.4; } }
+        else { c.sl++; c.sr++; d.s = 1; d.y = 8.4; }
+      }
+    } else if (d.s === 1) {
+      const dir = d.x < 18 ? -1 : 1; d.x += dir * 8 * dt; if (d.x < 0 || d.x > 36) { d.s = 2; d.v = 0; }
+    } else { d.v += 14 * dt; d.y -= d.v * dt; if (d.y < 0) respawn(d); }
+    grPos[i * 3] = d.x; grPos[i * 3 + 1] = d.y; grPos[i * 3 + 2] = d.z;
+  });
+  grGeo.attributes.position.needsUpdate = true;
+  GR.tx += dt; if (GR.tx > .25) { GR.tx = 0; $('#gnA').textContent = c.sl ? Math.round(100 * c.sr / c.sl) + '%' : '—'; $('#gnB').textContent = c.gl ? Math.round(100 * c.gr / c.gl) + '%' : '—'; }
+}
 
 /* ---------- loop ---------- */
-let fS = 0, last = performance.now(), time = 0;
+let fS = 0, last = performance.now(), time = 0, activeBeat = 0;
 const camPos = V3(), camTgt = V3(), tmp = V3();
 let intro = REDUCED ? 1 : 0;
 function sph(t, d, az, el, out) {
@@ -528,17 +773,27 @@ function tick(now) {
   const i = clamp(Math.floor(fS), 0, beats.length - 1), j = Math.min(i + 1, beats.length - 1), k = sm(clamp(fS - i, 0, 1));
   const A = beats[i], Bt = beats[j];
   camTgt.lerpVectors(A.c, Bt.c, k);
-  const d = lerp(A.d, Bt.d, k) * (vw < 900 ? 1.4 : 1), az = lerp(A.az, Bt.az, k) + mx * 6 + (REDUCED ? 0 : Math.sin(time * .15) * 4), el = lerp(A.el, Bt.el, k) - my * 2;
+  const d = lerp(A.d, Bt.d, k) * (vw < 900 ? 1.55 : 1), az = lerp(A.az, Bt.az, k) + mx * 6 + (REDUCED ? 0 : Math.sin(time * .15) * 4), el = lerp(A.el, Bt.el, k) - my * 2;
   const introK = eo(clamp(intro, 0, 1));
   sph(camTgt, d * (1 + (1 - introK) * .35), az + (1 - introK) * 30, el + (1 - introK) * 6, camPos);
   camera.position.copy(camPos); camera.lookAt(camTgt);
-  // assemble models near the current beat
   models.forEach(m => { m.target = m.beat !== undefined && Math.abs(fS - m.beat) < 1.15 ? 1 : 0; });
-  mOndal.target = Math.abs(fS - 0) < 2.2 ? 1 : 0;
+  mOndal.target = Math.abs(fS) < 2.2 ? 1 : 0;
   if (!REDUCED && intro < 1) { intro += dt * .35; }
-  // lights follow
-  key.position.set(camTgt.x - 26, camTgt.y + 44, camTgt.z + 30); key.target.position.copy(camTgt);
+  // lights follow (the sun slider drives the key light on the Ondal step)
+  if (sun.play) { sun.h += dt * (12 / 16); if (sun.h > 19) sun.h = 7; snT.value = sun.h; }
+  const sw = clamp(1 - Math.abs(fS - 1) * 1.6, 0, 1), sv = sunVec(sun.h);
+  key.position.set(camTgt.x - 26, camTgt.y + 44, camTgt.z + 30).lerp(tmp.copy(camTgt).addScaledVector(sv.v, 60), sw);
+  key.intensity = lerp(2.3, .9 + 2.6 * Math.sin(sv.deg * Math.PI / 180), sw);
+  key.color.setHex(0xfff0dd).lerp(new THREE.Color(0xffc48a), sw * (1 - clamp((sv.deg - 10) / 30, 0, 1)));
+  key.target.position.copy(camTgt);
+  sunSprite.position.copy(mOndal.origin).addScaledVector(sv.v, 100); sunSprite.material.opacity = sw; sunSprite.visible = sw > .02;
+  sunArc.position.copy(mOndal.origin); sunArc.material.opacity = .35 * sw; sunArc.visible = sw > .02;
+  if (sw > .02) { shaftsUpdate(sv, sw); sunUI(sv); } else shaftsUpdate(sv, 0);
   rim.position.set(camTgt.x + 30, camTgt.y + 20, camTgt.z - 34); rim.target.position.copy(camTgt);
+  const ab = Math.round(fS); if (ab !== activeBeat) { activeBeat = ab; closeTags(); }
+  tabs.classList.toggle('on', fS > .7 && fS < 6.4);
+  tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.b === ab));
   const run = inView() || Math.abs(fS - Math.round(fS)) > .02;
   if (run) {
     models.forEach(m => m.update(dt));
@@ -546,9 +801,9 @@ function tick(now) {
     mGreen.roofs.pv.concat(mGreen.roofs.green).forEach(o => { if (o.userData.hide) o.visible = false; });
     S.step(dt); S.apply(); seUI();
     mConn.conn.update(dt, time);
-    // labels
+    fireUpdate(dt); grUpdate(dt);
     beats.forEach((b, bi) => {
-      const show = Math.abs(fS - bi) < .22 && b.m.t > .97;
+      const show = Math.abs(fS - bi) < .22 && b.m.t > .97 && !b.labelsOff;
       b.labels.forEach(l => {
         tmp.copy(l.p).project(camera);
         const x = (tmp.x * .5 + .5) * vw, y = (-tmp.y * .5 + .5) * vh;
