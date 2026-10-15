@@ -154,27 +154,19 @@ function buildOndal(ox, o = {}) {
     const L = rows[i + 1] - rows[i] - (o.omega ? 1.8 : .6), xm = (rows[i] + rows[i + 1]) / 2; if (i === 0) m.dyn.L0 = L;
     if (o.roof === 'tau' || o.roof === 'plan') {
       if (o.roof === 'tau') {
-        const nT = Math.max(2, Math.round(D / 5)), sp = D / nT, FW = 1.0, GAPT = sp - FW - .06, SAGT = .5, NX = 36;
+        const nT = Math.max(2, Math.round(D / 5)), sp = D / nT, GAPT = sp - 1.82, SAGT = .5;
         const prof = x => .75 + 1.1 * (1 - Math.pow(2 * x / L, 2));
-        const stemS = new THREE.Shape(); stemS.moveTo(-L / 2, 0); stemS.lineTo(L / 2, 0);
-        for (let q = 0; q <= NX; q++) { const x = L / 2 - (q / NX) * L; stemS.lineTo(x, prof(x) - .16); } stemS.closePath();
-        const flS = new THREE.Shape(); for (let q = 0; q <= NX; q++) { const x = -L / 2 + q * L / NX; q ? flS.lineTo(x, prof(x)) : flS.moveTo(x, prof(x)); } for (let q = NX; q >= 0; q--) { const x = -L / 2 + q * L / NX; flS.lineTo(x, prof(x) - .16); } flS.closePath();
+        const bMat = M.concrete.clone(); bMat.side = THREE.DoubleSide; bMat.flatShading = true;
         const archH = zz => { const r = zz / (GAPT / 2); return Math.abs(r) >= 1 ? 0 : SAGT * (1 - r * r); };
         for (let q = 0; q <= nT; q++) {
           const z = q * sp, dl2 = .42 + (q / (nT + 1)) * .4;
-          const gS = new THREE.ExtrudeGeometry(stemS, { depth: .26, bevelEnabled: false }); gS.translate(0, 0, -.13);
-          const st = new THREE.Mesh(gS, M.concrete); st.position.set(xm, colH, z); m.add(st, dl2);
-          const gF = new THREE.ExtrudeGeometry(flS, { depth: FW, bevelEnabled: false, curveSegments: 1 }); gF.translate(0, 0, -FW / 2);
-          const fl = new THREE.Mesh(gF, M.concrete); fl.position.set(xm, colH, z); m.add(fl, dl2 + .01);
-          m.add(box(L, .26, .56, M.concrete, xm, colH - .13, z), dl2 + .01);
+          const tb = new THREE.Mesh(tauBeamGeo(L, prof), bMat); tb.position.set(xm, colH, z); m.add(tb, dl2);
           if (q < nT) {
             const g = new THREE.PlaneGeometry(L - .4, GAPT, 20, 10); g.rotateX(-Math.PI / 2);
-            const P = g.attributes.position; for (let k = 0; k < P.count; k++) { const x = P.getX(k), zz = P.getZ(k); P.setY(k, prof(clamp(x, -L / 2, L / 2)) - .08 + archH(zz)); }
-            g.computeVertexNormals(); const cm = M.cap.clone(); cm.side = THREE.DoubleSide;
+            const P = g.attributes.position; for (let k = 0; k < P.count; k++) { const x = P.getX(k), zz = P.getZ(k); P.setY(k, prof(clamp(x, -L / 2, L / 2)) - .04 + archH(zz)); }
+            g.computeVertexNormals(); const cm = M.cap.clone(); cm.side = THREE.DoubleSide; cm.bumpMap = ribTex.clone(); cm.bumpMap.repeat.set((L - .4) / .22, 1); cm.bumpMap.needsUpdate = true; cm.bumpScale = 2.2;
             const arc = new THREE.Mesh(g, cm); arc.position.set(xm, colH, z + sp / 2); m.add(arc, dl2 + .06); m.cappelle.push(arc);
-            const gg = new THREE.PlaneGeometry(4.2, GAPT, 4, 10); gg.rotateX(-Math.PI / 2);
-            const Q = gg.attributes.position; for (let k = 0; k < Q.count; k++) { const x = Q.getX(k), zz = Q.getZ(k); Q.setY(k, prof(clamp(x, -L / 2, L / 2)) - .05 + archH(zz)); }
-            gg.computeVertexNormals(); const gl2 = new THREE.Mesh(gg, M.glass); gl2.position.set(xm, colH, z + sp / 2); gl2.castShadow = false; m.add(gl2, dl2 + .1);
+            if (q % 2 === 1) for (const xk of [-6, -2, 2, 6]) { const gg = new THREE.PlaneGeometry(1.5, GAPT, 3, 10); gg.rotateX(-Math.PI / 2); const Q = gg.attributes.position; for (let k = 0; k < Q.count; k++) { const x = Q.getX(k) + xk, zz = Q.getZ(k); Q.setY(k, prof(clamp(x, -L / 2, L / 2)) - .0 + archH(zz)); } gg.computeVertexNormals(); const gl2 = new THREE.Mesh(gg, skyM); gl2.position.set(xm + xk, colH, z + sp / 2); gl2.castShadow = false; m.add(gl2, dl2 + .1); }
           }
         }
         m.stat = { name: 'Travi TAU', n: (rows.length - 1) * (nT + 1) };
@@ -252,30 +244,37 @@ function buildOndal(ox, o = {}) {
   return m;
 }
 
+/* ---------- TAU helpers (sezioni dal catalogo) ---------- */
+const TAU_P = [[-.9, 0], [-.72, 0], [-.72, -.16], [-.13, -.4], [.13, -.4], [.72, -.16], [.72, 0], [.9, 0], [.9, -.3], [.13, -.62], [.13, -.8], [.4, -.88], [.4, -1], [-.4, -1], [-.4, -.88], [-.13, -.8], [-.13, -.62], [-.9, -.3]];
+function tauBeamGeo(L, prof, NX = 36) {
+  const n = TAU_P.length, pos = [], v = (x, j) => [x, prof(x) + TAU_P[j][1], TAU_P[j][0]];
+  for (let i = 0; i < NX; i++) { const x0 = -L / 2 + i * L / NX, x1 = x0 + L / NX; for (let j = 0; j < n; j++) { const j2 = (j + 1) % n, a = v(x0, j), b = v(x1, j), c = v(x1, j2), d = v(x0, j2); pos.push(...a, ...b, ...c, ...a, ...c, ...d); } }
+  const tri = THREE.ShapeUtils.triangulateShape(TAU_P.map(p => new THREE.Vector2(p[0], p[1])), []);
+  for (const x of [-L / 2, L / 2]) tri.forEach(t => t.forEach(k => pos.push(...v(x, k))));
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+}
+const ribTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 8; const g = c.getContext('2d'); g.fillStyle = '#808080'; g.fillRect(0, 0, 64, 8); const gr = g.createLinearGradient(0, 0, 64, 0); gr.addColorStop(0, '#000'); gr.addColorStop(.5, '#fff'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 64, 8); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })();
+const skyM = new THREE.MeshPhysicalMaterial({ color: 0x5f9fd0, roughness: .1, metalness: .1, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false });
+
 /* ---------- TAU ---------- */
 function buildTau(ox) {
   const m = new Model(ox); m.stage(30);
-  const L = 24, colH = 7, zsB = [-7.5, -2.5, 2.5, 7.5], FW = 1.0, GAP = 5 - FW - .06, SAG = .5;
+  const L = 24, colH = 7, zsB = [-7.5, -2.5, 2.5, 7.5], FW = 1.8, GAP = 5 - FW - .02, SAG = .5;
   m.g.userData.center = V3(0, 5, 0);
   m.still(box(L + 6, .3, 24, M.concreteD, 0, -.15, 0));
   const prof = x => .75 + 1.1 * (1 - Math.pow(2 * x / L, 2));
   const dprof = x => -1.1 * 2 * (2 * x / L) * (2 / L);
   const N = 40;
-  const stemS = new THREE.Shape(); stemS.moveTo(-L / 2, 0); stemS.lineTo(L / 2, 0);
-  for (let i = 0; i <= N; i++) { const x = L / 2 - (i / N) * L; stemS.lineTo(x, prof(x) - .16); } stemS.closePath();
-  const flS = new THREE.Shape(); for (let q = 0; q <= N; q++) { const x = -L / 2 + q * L / N; q ? flS.lineTo(x, prof(x)) : flS.moveTo(x, prof(x)); } for (let q = N; q >= 0; q--) { const x = -L / 2 + q * L / N; flS.lineTo(x, prof(x) - .16); } flS.closePath();
+  const beamMat = M.concrete.clone(); beamMat.side = THREE.DoubleSide; beamMat.flatShading = true;
   let n = 0;
-  for (const z of zsB) for (const x of [-L / 2, L / 2]) m.add(box(1.0, colH, 1.2, M.concrete, x, colH / 2, z), (n++ / 8) * .2, V3(0, 20, 0));
+  for (const z of zsB) for (const x of [-L / 2, L / 2]) m.add(box(.8, colH - .5, .8, M.concrete, x, (colH - .5) / 2, z), (n++ / 8) * .2, V3(0, 20, 0));
   n = 0;
   for (const z of zsB) {
-    // trave TAU: anima sottile, piattabanda superiore larga 1 m, bulbo inferiore
-    const gS = new THREE.ExtrudeGeometry(stemS, { depth: .26, bevelEnabled: false }); gS.translate(0, 0, -.13);
-    const st = new THREE.Mesh(gS, M.concrete); st.position.set(0, colH, z); m.add(st, .25 + (n++ / 4) * .3, V3(0, 20, 0));
-    const gF = new THREE.ExtrudeGeometry(flS, { depth: FW, bevelEnabled: false, curveSegments: 1 }); gF.translate(0, 0, -FW / 2);
-    const fl = new THREE.Mesh(gF, M.concrete); fl.position.set(0, colH, z); m.add(fl, .27 + (n) * .02, V3(0, 20, 0));
-    m.add(box(L, .26, .56, M.concrete, 0, colH - .13, z), .26 + n * .02, V3(0, 20, 0));
-    m.add(box(1.1, .2, 1.5, M.concreteD, -L / 2, colH - .1, z), .2); m.add(box(1.1, .2, 1.5, M.concreteD, L / 2, colH - .1, z), .2);
+    // trave TAU: sezione a Y con ali e labbra, anima sottile e bulbo inferiore
+    const tb = new THREE.Mesh(tauBeamGeo(L, prof), beamMat); tb.position.set(0, colH, z); m.add(tb, .25 + (n++ / 4) * .3, V3(0, 20, 0));
   }
+  // travi di banchina continue sulle teste dei pilastri
+  for (const sx of [-1, 1]) m.add(box(.9, .5, 16.5, M.concreteD, sx * L / 2, colH - .5, 0), .22, V3(0, 20, 0));
   // cappella curva fra le travi (segue la parabola); lucernari a raso in vetro
   const archH = zz => { const r = (zz / (GAP / 2)); return Math.abs(r) >= 1 ? 0 : SAG * (1 - r * r); };
   const arch = (xc, w, zc, mat, lift) => {
@@ -285,8 +284,8 @@ function buildTau(ox) {
   };
   for (let i = 0; i < 3; i++) {
     const zc = (zsB[i] + zsB[i + 1]) / 2;
-    const c = arch(0, L - 1.2, zc, M.cap, 0); c.material = M.cap.clone(); c.material.side = THREE.DoubleSide; m.add(c, .62 + i * .05, V3(0, 20, 0), m.g, null, 'tauroof');
-    if (i === 1) for (const xk of [-8, 0, 8]) { const gm = arch(xk, 4.2, zc, M.glass, .03); m.add(gm, .8, V3(0, 20, 0), m.g, null, 'tauroof'); gm.castShadow = false; }
+    const c = arch(0, L - 1.2, zc, M.cap, 0); c.material = M.cap.clone(); c.material.side = THREE.DoubleSide; c.material.bumpMap = ribTex.clone(); c.material.bumpMap.repeat.set((L - 1.2) / .22, 1); c.material.bumpMap.needsUpdate = true; c.material.bumpScale = 2.2; m.add(c, .62 + i * .05, V3(0, 20, 0), m.g, null, 'tauroof');
+    if (i !== 0) for (const xk of [-8.5, -4.2, 0, 4.2, 8.5]) { const gm = arch(xk, 1.6, zc, skyM, .04); m.add(gm, .8, V3(0, 20, 0), m.g, null, 'tauroof'); gm.castShadow = false; }
   }
   // pioggia: cade, tocca la copertura curva, scorre lungo la parabola, scende
   const NP = 320, geo = new THREE.BufferGeometry(), pos = new Float32Array(NP * 6);
@@ -360,7 +359,9 @@ function buildPlan(ox) {
   [-4.8, -2.4, 0, 2.4, 4.8].forEach((z, i) => {
     const t = extrudeX(T, px * 2, M.concrete); t.position.set(0, top, z); m.add(t, .55 + i * .04, up, m.g, E(9)); if (i === 2) m.pieces[m.pieces.length - 1].exp2 = V3(0, 1.5, 0);
   });
-  m.add(box(px * 2 + 1.8, .14, pz * 2 + 1.2, M.membrane, 0, top + .87, 0), .86, V3(0, 16, 0), m.g, E(13)); m.pieces[m.pieces.length - 1].hideDet = true;
+  { const ins = new THREE.MeshStandardMaterial({ color: 0xe8d98c, roughness: .8 }), sh = new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: .35, metalness: .15 });
+    m.add(box(px * 2 + 1.8, .1, pz * 2 + 1.2, ins, 0, top + .85, 0), .86, V3(0, 16, 0), m.g, E(13)); m.pieces[m.pieces.length - 1].hideDet = true;
+    m.add(box(px * 2 + 1.8, .05, pz * 2 + 1.2, sh, 0, top + .93, 0), .87, V3(0, 16, 0), m.g, E(14)); m.pieces[m.pieces.length - 1].hideDet = true; }
   // schematic bearing detail of the secondary T beam on the main beam (shown in 'detail' mode)
   const det = new THREE.Group(); det.visible = false; m.g.add(det); m.detGroup = det;
   const padM = new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: .9 }), groutM = new THREE.MeshStandardMaterial({ color: 0xe8e3d6, roughness: .95 });
@@ -710,6 +711,8 @@ const INFO = {
   'Maglia 25 × 25 m e oltre': 'Maglie di pilastri di 25 × 25 m, anche maggiori nei casi speciali, con ancoraggi sismici pensati per le grandi maglie.',
   'Estradosso parabolico': 'La parte superiore curva, larga 80–120 cm, favorisce il deflusso dell’acqua e un’impermeabilizzazione ottimale.',
   'Intradosso piano': 'Il lato inferiore è rettilineo: permette controsoffitti piani, finiture interne varie e impianti sopra il controsoffitto.',
+  'Lucernario a raso': 'Fasce vetrate integrate nella cappella curva: portano luce naturale dall’alto senza forare il manto. In alternativa si può usare un infisso shed.',
+  'Trave di banchina': 'Trave continua sulla testa dei pilastri: i tegoli e le travi TAU si appoggiano qui, con sezione a U e fissaggi su inserti.',
   'Deflusso dell’acqua': 'Luci da 12 a 32 m. TAU unisce i vantaggi di una copertura piana e di una a doppia pendenza.',
   'Incastro trave a T': 'La trave secondaria a T si appoggia sulla trave principale precompressa. Dettaglio schematico di un collegamento tipico: appoggio, spinotti e sigillatura.',
   'Appoggio in neoprene': 'Un cuscinetto elastomerico distribuisce il carico e lascia piccoli movimenti dovuti a dilatazioni e deformazioni. Dettaglio tipico, non un disegno esecutivo Manini.',
@@ -753,7 +756,7 @@ const SYS = {
   ondal: B(mOndal, V3(24, 8.5, 9), 58, -62, 11, [[[12, 10.3, 15], 'Shed vetrato · luce naturale'], [[30, 9.2, 7.5], 'Tegoli · interasse 5,00–7,50 m'], [[0, 5, 22.5], 'Pilastri prefabbricati']]),
   ondalp: B(mOndalP, V3(16, 6, 7.5), 74, -34, 18, [[[16, 11.6, 0], 'Luce fino a 32 m'], [[32, 5, 15], 'Maglia 25 × 25 m e oltre']]),
   ondaln: B(mOndalN, V3(12, 9.5, 11), 66, -40, 16, [[[0, 11.4, 11], 'Trave Super-Omega'], [[12, 10.4, 7.5], 'Tegoli su appoggi bassi'], [[24, 6, 0], 'Fondazioni più piccole']]),
-  tau: B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua']]),
+  tau: B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua'], [[0, 8.3, 0], 'Lucernario a raso'], [[-12, 6.4, 0], 'Trave di banchina']]),
   plan: B(mPlan, V3(0, 7.5, 0), 48, -42, 22, [[[-9, 4, 6], 'Pilastro'], [[9, 9.6, 0], 'Trave principale precompressa'], [[0, 11.2, -2.4], 'Trave secondaria a T'], [[-5, 11.2, 6], 'Manto isolante continuo']]),
   solai: B(mSolai, V3(5, 1.6, -5.8), 17, 70, 16, [[[5, 1.5, -5.8], 'Poker'], [[5, 1.8, -1.9], 'PI-Greco'], [[5, 1.9, 1.1], 'Solman'], [[5, 1.9, 4.2], 'Pluriman']]),
 };
