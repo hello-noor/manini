@@ -496,7 +496,7 @@ function mkLabel(p, t) {
 const O = m => m.origin;
 const B = (m, c, d, az, el, labels = []) => ({ m, c: O(m).clone().add(c), d, az, el, labels: labels.map(([p, t]) => mkLabel(O(m).clone().add(V3(...p)), t)) });
 const beats = [
-  B(mOndal, V3(18, 4.5, 11), 92, -36, 21),
+  B(mOndal, V3(14, 4.5, 11), 108, -36, 21),
   B(mOndal, V3(24, 8.5, 9), 58, -62, 11, [[[12, 10.3, 15], 'Shed vetrato · luce naturale'], [[30, 9.2, 7.5], 'Tegoli · interasse 5,00–7,50 m'], [[0, 5, 22.5], 'Pilastri prefabbricati']]),
   B(mOndalP, V3(16, 6, 7.5), 74, -34, 18, [[[16, 11.6, 0], 'Luce fino a 32 m'], [[32, 5, 15], 'Maglia 25 × 25 m e oltre']]),
   B(mTau, V3(0, 6.5, 0), 54, -30, 14, [[[0, 8.9, -7.5], 'Estradosso parabolico'], [[0, 7.0, 7.5], 'Intradosso piano'], [[12, 9, 2.5], 'Deflusso dell’acqua']]),
@@ -521,7 +521,7 @@ function measure() {
 let offX = 0, offY = 0;
 function layoutView() {
   const wide = vw > 900;
-  offX = wide ? vw * .15 : 0; offY = wide ? 0 : -vh * .22;
+  offX = wide ? vw * .19 : 0; offY = wide ? 0 : -vh * .22;
   camera.setViewOffset(vw, vh, -offX, -offY, vw, vh);
 }
 function frac() {
