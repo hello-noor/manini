@@ -285,28 +285,37 @@ function buildTau(ox) {
   };
   for (let i = 0; i < 3; i++) {
     const zc = (zsB[i] + zsB[i + 1]) / 2;
-    const c = arch(0, L - 1.2, zc, M.cap, 0); c.material = M.cap.clone(); c.material.side = THREE.DoubleSide; m.add(c, .62 + i * .05, V3(0, 20, 0));
-    if (i === 1) for (const xk of [-8, 0, 8]) { const gm = arch(xk, 4.2, zc, M.glass, .03); m.add(gm, .8, V3(0, 20, 0)); gm.castShadow = false; }
+    const c = arch(0, L - 1.2, zc, M.cap, 0); c.material = M.cap.clone(); c.material.side = THREE.DoubleSide; m.add(c, .62 + i * .05, V3(0, 20, 0), m.g, null, 'tauroof');
+    if (i === 1) for (const xk of [-8, 0, 8]) { const gm = arch(xk, 4.2, zc, M.glass, .03); m.add(gm, .8, V3(0, 20, 0), m.g, null, 'tauroof'); gm.castShadow = false; }
   }
   // pioggia: cade, tocca la copertura curva, scorre lungo la parabola, scende
   const NP = 320, geo = new THREE.BufferGeometry(), pos = new Float32Array(NP * 6);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const pts = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xa8dcff, transparent: true, opacity: .9 }));
   pts.frustumCulled = false; m.g.add(pts);
-  const surf = (x, z) => { const dz = (((z + 7.5) % 5) + 5) % 5 - 2.5; return colH + prof(clamp(x, -L / 2, L / 2)) + archH(dz) + .02; };
+  // confronto: tetto piano. L'acqua non ha pendenza e ristagna
+  const flatDeck = box(L - .4, .3, 15 - .2, M.deck, 0, colH + .85, 0); flatDeck.visible = false; m.g.add(flatDeck);
+  const poolM = new THREE.MeshStandardMaterial({ color: 0x4aa8ff, roughness: .1, metalness: .2, transparent: true, opacity: .75 });
+  const pool = new THREE.Mesh(new THREE.BoxGeometry(L - .6, 1, 14.6), poolM); pool.visible = false; m.g.add(pool);
+  m.flat = false; m.pool = 0; m.shed = 0; m.shedT = 0;
+  m.setFlat = f => { m.flat = f; if (f) m.hidden.add('tauroof'); else m.hidden.delete('tauroof'); flatDeck.visible = f; };
+  const surf = (x, z) => { if (m.flat) return colH + 1.05; const dz = (((z + 7.5) % 5) + 5) % 5 - 2.5; return colH + prof(clamp(x, -L / 2, L / 2)) + archH(dz) + .02; };
   const resp = d => { d.x = (Math.random() * 2 - 1) * L / 2; d.z = zsB[0] + Math.random() * (zsB[3] - zsB[0]); d.y = colH + prof(d.x) + 3 + Math.random() * 22; d.v = 0; d.s = 0; d.dir = d.x < 0 ? -1 : 1; };
   const drops = Array.from({ length: NP }, () => { const d = {}; resp(d); return d; });
   m.rainN = NP;
   m.rain = dt => {
     drops.forEach((d, i) => {
       let len = 1.1;
-      if (d.s === 0) { d.v += 16 * dt; d.y -= d.v * dt; const sf = surf(d.x, d.z); len = 1.1 + Math.min(d.v * .05, .8); if (d.y <= sf) { d.y = sf; d.s = 1; d.v = 0; } }
+      if (d.s === 0) { d.v += 16 * dt; d.y -= d.v * dt; const sf = surf(d.x, d.z); len = 1.1 + Math.min(d.v * .05, .8); if (d.y <= sf) { d.y = sf; d.v = 0; if (m.flat) { d.s = 3; d.life = .25 + Math.random() * .5; m.pool = Math.min(1, m.pool + .0035); m.shedT++; } else { d.s = 1; m.shed++; } } }
+      else if (d.s === 3) { d.life -= dt; len = .08; if (d.life <= 0) resp(d); }
       else if (d.s === 1) { d.x += d.dir * (1.8 + Math.abs(d.x) * .45) * dt * 2.2; d.y = surf(d.x, d.z); len = .35; if (Math.abs(d.x) >= L / 2) { d.s = 2; d.v = 0; } }
       else { d.v += 14 * dt; d.y -= d.v * dt; len = 1 + Math.min(d.v * .05, .8); if (d.y < 0) resp(d); }
       const y = i >= m.rainN ? -80 : d.y, dx = d.s === 1 ? -d.dir * len : 0, dy = d.s === 1 ? 0 : len;
       pos.set([d.x, y, d.z, d.x + dx, y + dy, d.z], i * 6);
     });
     geo.attributes.position.needsUpdate = true;
+    m.pool = clamp(m.pool - dt * (m.flat ? .012 : .5), 0, 1);
+    const hh = .04 + m.pool * .6; pool.visible = m.flat && m.pool > .005; pool.scale.y = hh; pool.position.set(0, colH + 1 + hh / 2, 0);
   };
   // fotovoltaico: telaio fissato senza forare il manto
   const pvM = new THREE.MeshPhysicalMaterial({ color: 0x14264a, roughness: .22, metalness: .55, clearcoat: 1, clearcoatRoughness: .1, emissive: 0x1f5fd0, emissiveIntensity: .2 });
@@ -788,6 +797,8 @@ mgS.addEventListener('input', mgUpdate); mgUpdate();
 const tuR = $('#tuR');
 tuR.addEventListener('input', () => { const i = +tuR.value; mTau.rainN = Math.round(300 * i / 200) + 10; $('#tuO').textContent = i + ' mm/h'; $('#tuQ').textContent = fmt(i * 480 / 3600, 1) + ' L/s'; });
 tuR.dispatchEvent(new Event('input'));
+$('#tuCmp').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#tuCmp').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); const flat = b.dataset.f === '1'; mTau.setFlat(flat); mTau.pool = 0; $('#tuWhy').innerHTML = flat ? '<b>Tetto piano.</b> Nessuna pendenza: la pioggia si ferma, forma una pozza e carica la copertura. L’acqua ferma cerca ogni minima fessura.' : '<b>TAU.</b> L’estradosso parabolico, largo 80–120 cm, è una pendenza continua: ogni goccia scorre verso le due gronde. Nessun ristagno e impermeabilizzazione ottimale.'; });
+setInterval(() => { const e = $('#tuPool'); if (e) e.textContent = mTau.flat ? Math.round(mTau.pool * 6 * 10) / 10 + ' cm' : '0 cm'; }, 250);
 $('#tuPv').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); const on = b.classList.contains('on'); mTau.pv.target = on ? 1 : 0; $('#tuP').textContent = on ? `${mTau.pv.n} pannelli · ${fmt(mTau.pv.area * .2)} kWp` : '—'; });
 
 /* ---------- UI: Plan explode + joint detail ---------- */

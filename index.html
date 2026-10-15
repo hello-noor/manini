@@ -534,8 +534,10 @@
     <div class="ctl">
       <div class="seg tog" id="tuPv"><button data-p="1">☀ Aggiungi il fotovoltaico</button></div>
       <div class="read"><div><span>Fotovoltaico</span><strong id="tuP">—</strong></div><div><span>Fissaggio</span><strong style="font-size:16px">senza forare</strong></div></div>
+      <div class="seg" id="tuCmp"><button class="on" data-f="0">Con TAU</button><button data-f="1">Tetto piano</button></div>
+      <p class="rinfo" id="tuWhy"><b>TAU.</b> L’estradosso parabolico, largo 80–120 cm, è una pendenza continua: ogni goccia scorre verso le due gronde. Nessun ristagno e impermeabilizzazione ottimale.</p>
       <label class="row">Pioggia<input id="tuR" type="range" min="10" max="200" step="10" value="80"><output id="tuO">80 mm/h</output></label>
-      <div class="read"><div><span>Da smaltire</span><strong id="tuQ">10,7 L/s</strong></div><div><span>Superficie</span><strong>480 m²</strong></div></div>
+      <div class="read"><div><span>Da smaltire</span><strong id="tuQ">10,7 L/s</strong></div><div><span>Superficie</span><strong>480 m²</strong></div><div style="grid-column:1/-1"><span>Acqua ferma sul tetto</span><strong id="tuPool">0 cm</strong></div></div>
     </div>
     <p class="fine m-hide">Fotovoltaico: stima a 0,2 kWp per m² di pannello. Portata = pioggia × superficie.</p>
     <button class="replay" data-b="4">↻ Rimonta</button>
