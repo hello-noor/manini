@@ -17,6 +17,7 @@
     const jump = (el, block) => { setMenu(false); setTimeout(() => el && el.scrollIntoView({ behavior: 'smooth', block }), 60); };
     menu.addEventListener('click', e => {
       const a = e.target.closest('a'); if (!a) return; e.preventDefault();
+      if (a.dataset.jump) return;
       if (a.dataset.b) return jump(document.querySelector(`[data-beat="${a.dataset.b}"]`), 'center');
       const id = a.getAttribute('href'); jump(id === '#top' ? document.body : document.querySelector(id), 'start');
     });
@@ -103,6 +104,14 @@
     });
     show(1);
   }
+
+  /* ---------- salti rapidi tra sezioni (data-jump = numero della scena) ---------- */
+  document.addEventListener('click', ev => {
+    const j = ev.target.closest('[data-jump]'); if (!j) return; ev.preventDefault();
+    const t = document.querySelector(`[data-beat="${j.dataset.jump}"]`); if (!t) return;
+    if (menu && menu.classList.contains('open')) { menu.classList.remove('open'); burger.classList.remove('open'); document.documentElement.style.overflow = ''; }
+    setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: +j.dataset.jump === 1 ? 'start' : 'center' }), 60);
+  });
 
   /* ---------- foresta: cresce quando la sezione entra in vista ---------- */
   const sust = $('#sostenibilita');

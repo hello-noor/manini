@@ -773,7 +773,7 @@ const fmt = (n, d = 0) => n.toLocaleString('it-IT', { minimumFractionDigits: d, 
 
 /* ---------- UI: system tabs + replay ---------- */
 const tabs = $('#systabs');
-tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b) document.querySelector(`[data-beat="${b.dataset.b}"]`).scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.b) document.querySelector(`[data-beat="${b.dataset.b}"]`).scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 document.querySelectorAll('.replay').forEach(b => b.addEventListener('click', () => { beats[+b.dataset.b].m.t = 0; }));
 
 /* ---------- UI: Ondal sun (animated) + light shafts ---------- */

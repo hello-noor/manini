@@ -453,6 +453,18 @@
   .swt:has(input:checked){border-color:var(--accent);background:rgba(0,73,138,.35)}.swt input:focus-visible+.tk{outline:2px solid #fff;outline-offset:2px}
   .tx{display:flex;flex-direction:column;line-height:1.15}.tx b{font-size:15px}.tx i{font:500 10.5px 'JetBrains Mono',monospace;font-style:normal;color:var(--dim);margin-top:3px}
   .read>div.bad{background:rgba(255,77,77,.16)}.read>div.bad strong{color:#ff9d9d}
+  .fork{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px;max-width:640px}
+  .fk{position:relative;display:flex;flex-direction:column;gap:4px;padding:16px 16px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.14);background:rgba(10,20,36,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .4s;text-shadow:none}
+  .fk:hover{transform:translateY(-4px);border-color:rgba(77,163,255,.7);box-shadow:0 22px 50px -20px rgba(30,120,230,.8)}
+  .fk .fn{font:500 11px 'JetBrains Mono',monospace;letter-spacing:.14em;color:var(--accent)}
+  .fk b{font-size:19px;letter-spacing:-.02em;line-height:1.15;color:#fff}
+  .fk .fd{font-size:13.5px;line-height:1.4;color:rgba(232,240,252,.72)}
+  .fk i{font:600 13px Inter,sans-serif;font-style:normal;color:var(--accent);margin-top:6px}
+  .fk.alt{background:linear-gradient(150deg,rgba(0,73,138,.75),rgba(10,20,36,.62));border-color:rgba(77,163,255,.45)}
+  .fkn{font-size:12.5px;color:var(--dim);margin:12px 0 0}
+  #systabs .tab-next{background:rgba(77,163,255,.16);color:#bfe0ff;margin-left:4px}
+  .backsys{display:inline-block;margin:6px 0 0;font:500 13px Inter,sans-serif;color:var(--accent);background:none;border:0;cursor:pointer;padding:4px 0}
+  @media(max-width:560px){.fork{grid-template-columns:1fr;gap:10px}.fk{padding:13px 14px}.fk .fd{font-size:13px}.fk b{font-size:17px}}
   .rv{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
   #nogl{display:none;position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,#0b2a4a,#050b14 70%)}
   @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
@@ -469,6 +481,7 @@
     <a href="#top" data-m>Inizio</a>
     <div class="mn-g">Sistemi</div>
     <div class="mn-sub"><a href="#" data-b="1">Ondal</a><a href="#" data-b="2">Ondal+</a><a href="#" data-b="3">Ondal New</a><a href="#" data-b="4">TAU</a><a href="#" data-b="5">Manini Plan</a><a href="#" data-b="6">Solai</a><a href="#" data-b="7">Tutti i tetti</a></div>
+    <a href="#" data-jump="7" data-m>Vai al tuo capannone</a>
     <a href="#perche" data-m>Perché Manini</a>
     <a href="#sicurezza" data-m>Sicurezza sismica</a>
     <a href="#connect" data-m>Manini Connect</a>
@@ -481,7 +494,7 @@
     <a href="#contatti" data-m class="cta">Contatti</a>
   </div>
 </div>
-<nav id="systabs" aria-label="Sistemi"><button data-b="1">Ondal</button><button data-b="2">Ondal+</button><button data-b="3">Ondal New</button><button data-b="4">TAU</button><button data-b="5">Manini Plan</button><button data-b="6">Solai</button><button data-b="7">Tutti i tetti</button></nav>
+<nav id="systabs" aria-label="Sistemi"><button data-b="1">Ondal</button><button data-b="2">Ondal+</button><button data-b="3">Ondal New</button><button data-b="4">TAU</button><button data-b="5">Manini Plan</button><button data-b="6">Solai</button><button data-b="7">Tutti i tetti</button><button class="tab-next" data-jump="7">Salta al tuo capannone ›</button></nav>
 
 <main>
 <!-- HERO -->
@@ -491,7 +504,11 @@
     <div class="eyebrow">Manini · prefabbricati dal 1962</div>
     <h1>Il tuo nuovo capannone <span class="hl">nasce qui.</span></h1>
     <p class="lead">Pilastri, travi e coperture nascono in fabbrica, dove tutto si misura e nulla si improvvisa. In cantiere arrivano finiti: tempi certi, più luce, più sicurezza. <span class="nb"><strong>10&nbsp;milioni&nbsp;di&nbsp;m²</strong>&nbsp;costruiti&nbsp;dal&nbsp;1962.</span></p>
-    <div class="cta"><a class="btn" href="#sistemi">Scopri i sistemi</a><a class="btn ghost" href="#contatti">Parla con un tecnico ›</a></div>
+    <div class="fork">
+      <a class="fk" href="#sistemi"><span class="fn">01</span><b>Esplora i sistemi</b><span class="fd">Ondal, TAU, Manini Plan, Solai e le prove sismiche, in 3D.</span><i>Parti da qui ›</i></a>
+      <a class="fk alt" href="#" data-jump="7"><span class="fn">02</span><b>Vai al tuo capannone</b><span class="fd">Scegli tetto e misure e richiedi un preventivo.</span><i>Salta alla configurazione ›</i></a>
+    </div>
+    <p class="fkn">Puoi sempre tornare indietro: il menu in alto porta a ogni sistema.</p>
   </div>
   <div class="scrollhint">SCORRI</div>
 </section>
@@ -591,6 +608,7 @@
         <p class="rinfo" id="cuN" style="min-height:0;margin:6px 0 0"></p></div>
       <div class="read"><div><span>Superficie</span><strong id="cfA">—</strong></div><div><span>Pilastri</span><strong id="cfC">—</strong></div><div><span id="cfNl">Elementi</span><strong id="cfN">—</strong></div><div><span>Altezza libera</span><strong id="cfHh">—</strong></div></div>
       <a class="btn" href="#contatti" data-prefill="Nuova Realizzazione" data-cfg="1" style="text-align:center">Richiedi un preventivo</a>
+      <button type="button" class="backsys" data-jump="1">↑ Rivedi tutti i sistemi dall’inizio</button>
     </div>
     <p class="fine m-hide">Clicca le etichette sul modello per un approfondimento. Conteggi geometrici di massima, non un preventivo.</p>
   </div></div>
